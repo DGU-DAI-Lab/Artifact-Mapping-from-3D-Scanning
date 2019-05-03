@@ -9,24 +9,19 @@ class Image:
     BLACK = 0
     WHITE = 255
 
-    src = None
-
+    # Constructor
     def __init__(self, src):
         self.array = None
         self.type = None
-
+        # 
         self.set(src)
 
-        # First loaded image is the source
-        if Image.src is None:
-            Image.src = self
-
-        pass
-
-    # ÀÎ½ºÅÏ½ºÀÇ Á¤º¸ °»½Å
+    # Method for changing the image of instances.
     def set(self, src):
         self.type = self._getType(src)
+        self.array = src
 
+    # 
     def _getType(self, src):
         (w,h,channel) = src.shape
 
@@ -40,7 +35,7 @@ class Image:
                 return Image.IMAGE_GRAYSCALE
         return Image.IMAGE_BINARY
 
-    # ÇÊÅÍ¸¦ Àû¿ë
+    # ï¿½ï¿½ï¿½Í¸ï¿½ ï¿½ï¿½ï¿½ï¿½
     def filter2D(self, fliter):
         
 
