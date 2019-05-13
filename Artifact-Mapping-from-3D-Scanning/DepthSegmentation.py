@@ -30,18 +30,59 @@ class Obj3D:
             minx = min(p[stl.Dimension.X], minx)
             miny = min(p[stl.Dimension.Y], miny)
             minz = min(p[stl.Dimension.Z], minz)
-        self.boundingBox = ((minx, miny, minz), (maxx, maxy, maxz))
+        self.boundingBox = [[minx, miny, minz], [maxx, maxy, maxz]]
+
+    def translate(self, vector):
+        self.mesh.x -= vector[0]
+        self.mesh.y -= vector[1]
+        self.mesh.z -= vector[2]
 
     def align(self):
-        pass
+        self.translate(self.center)
+        # Rotation
 
-class DepthSegmentation(object):
+class DepthSegmentation:
     """description of class"""
-    def __init__(self, object3D):
-        self.pivot = [0, 0, 0] # 원점 좌표
-        self.crossSectionVect = [0, 0, 0] # 절단면의 방향 벡터
-        pass
+    def __init__(self, my_mesh):
+        self.mesh = my_mesh
 
-    def setCrossSection(self, crossSectionVect, ): # 절단면의 방향 벡터 위치 설정
-        self.crossSectionVect = vector
+        o, i, s = self.segmentation()
+        self.i = i
+
+
+    def segmentation(self):
+        outerPolygons = []
+        innerPolygons = []
+        slicePolygons = []
+        isOuter = isSlice = isInner = None
+
+        for poly in self.mesh.vector:
+            isOuter = isSlice = isInner = False
+            for vector in poly:
+                depth = vector[1] # depth == y
+                if depth >= 0:
+                    isOuter = True
+                if depth <= 0:
+                    isInner = True
+            isSlice = isOuter and isInner
+
+            if isOuter:
+                outerPolygons.append(poly)
+            if isInner:
+                innerPolygons.append(poly)
+            if isSlice:
+                slicePolygons.append(poly)
+        # Convert polygons to mesh
+        return [mesh.Mesh(self._polygons2mesh(poly)) for poly in [outerPolygons, slicePolygons, innerPolygons]]
+
+    def _polygons2mesh(self, polygons):
+        ret_mesh = np.array(len(polygons), dtype=mesh.Mesh.dtype)
+        for i in range(len(polygons)):
+            ret_mesh['vectors'][i] = np.array(polygons[i])
+        return ret_mesh
+
+    def openize(self, polygons):
+        return polygons
+
+
 

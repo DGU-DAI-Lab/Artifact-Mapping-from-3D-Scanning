@@ -29,14 +29,13 @@ figure = pyplot.figure()
 axes = mplot3d.Axes3D(figure)
 
 m = A()
-m.open("E:/Git/clone repository/Artifact-Mapping-from-3D-Scanning/토기 예시 데이터/3D 스캔 파일/토기1.stl")
+m.open("../토기 예시 데이터/3D 스캔 파일/토기1.stl")
 print("Mesh 개수: % 8d개" % (len(m.mesh)))
 
 from DepthSegmentation import *
-obj = Obj3D(m.mesh)
-obj.align()
+obj = DepthSegmentation(m.mesh)
 
-m = obj.mesh
+m = obj.i
 
-axes.add_collection3d(mplot3d.art3d.Poly3DCollection(m.vectors[:6000]))
+axes.add_collection3d(mplot3d.art3d.Poly3DCollection(m.vectors))
 pyplot.show()
