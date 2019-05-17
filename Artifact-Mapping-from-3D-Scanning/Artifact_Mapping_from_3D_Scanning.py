@@ -1,177 +1,28 @@
-import cv2
-import numpy as np
+import cv2import numpy as npCONTOUR_THICKNESS = 1ARTIFACT_LIST = [    { 'name' : "고배",        'altname' : "a" },    { 'name' : "굽다리접시1", 'altname' : "b" },    { 'name' : "토기6",       'altname' : "c" }]def __main__():    # Depth-Based Segmentation    # Body/Window Seperation    samples = load_samples()    for artifact in samples:        oldway(artifact.raw, artifact.name)        spatial_contours = masking(artifact)        external_contours = getContours(artifact)        for section in ["front", "back"]:            result = cv2.add(spatial_contours[section], external_contours[section])            cv2.imwrite("../%s_%s_%s.jpg" % (artifact.name, section, "all-contours"), result)    cv2.waitKey(0)def masking(artifact):    MASK_SIZE = 36    CANNY_THRESH_1 = 78    CANNY_THRESH_2 = 188    contoureds = {}    for section, face in artifact.faces.items():        if section is 'slice':            continue        canvas = np.zeros(face.gray_image.shape, np.uint8)        for i in range(len(face.bin_image['window'])):            mask = face.bin_image['window'][i]            target = face.apply_mask(face.gray_image,mask, MASK_SIZE+1)            # PRINT            cv2.imwrite("../%s_%s_%s_%d.jpg" % (artifact.name, section, "window-mask", i), mask)            cv2.imwrite("../%s_%s_%s_%d.jpg" % (artifact.name, section, "window-masked", i), target)            target = cv2.Canny(target, CANNY_THRESH_1, CANNY_THRESH_2, apertureSize=3)            target = face.apply_mask(target,mask, MASK_SIZE)            cv2.imwrite("../%s_%s_%s_%d.jpg" % (artifact.name, section, "window-contour", i), target)            canvas = cv2.add(canvas,target)        contoureds[section] = canvas        cv2.imwrite("../%s_%s_%s.jpg" % (artifact.name, section, "window-contour-all"), canvas)    return contouredsdef getContours(artifact):    global CONTOUR_THICKNESS    contoureds = {}    for section, face in artifact.faces.items():        if section is 'slice':            continue        canvas = np.zeros(face.gray_image.shape, np.uint8)        cv2.drawContours(canvas, face.contours, -1, 255, CONTOUR_THICKNESS)        cv2.imwrite("../%s_%s_%s.jpg" % (artifact.name, section, "body-contour"), canvas)        contoureds[section] = canvas    return contouredsdef load_samples():    samples = []    for info in ARTIFACT_LIST:        artifact = Artifact()        artifact.name = info['altname']        artifact.load("../캐럿펀트 샘플 데이터/%s.png" % info['name']) # TO CHANGE        samples.append(artifact)    return samplesdef readUnicodePath(path):    stream = open(path,"rb")    bytes = bytearray(stream.read())    numpyArray = np.asarray(bytes,dtype=np.uint8)    img_bgr = cv2.imdecode(numpyArray, cv2.IMREAD_UNCHANGED)    return img_bgrprinted_images = 0def imshow(image):    global printed_images    cv2.imshow("%d" % printed_images, image)    printed_images += 1def oldway(img, fname):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # Smoothing
+    GAUSS_KERNEL_SIZE = 3
+    GAUSS_SIGMA = 25
+    # 1. 전처리 - 노이즈제거 (Blurring) : 가우시안 필터 적용
+    blurred = cv2.GaussianBlur(gray, (GAUSS_KERNEL_SIZE,GAUSS_KERNEL_SIZE), GAUSS_SIGMA)
+    # 2-A1 - opt1. 임계처리
+    THRESH = 240
+    ret, threshed = cv2.threshold(blurred.copy(), THRESH, 255, cv2.THRESH_BINARY_INV)
+    # 2-A2. 후처리 - 점 노이즈제거 (Blurring) : Morphology - Opening
+    morphed = cv2.morphologyEx(threshed, cv2.MORPH_CLOSE, (5,5), iterations=4)
+    # 2-A3
+    contours, hierarchy = cv2.findContours(morphed, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
 
-from matplotlib import pyplot as plt
+    for length in range(1,2):
+        canvas = np.zeros(gray.shape, np.uint8)
+        cv2.drawContours(canvas, contours, -1, 255, length)
+        cv2.imwrite("../%s_oldway_thresh%d.jpg"%(fname,length), canvas)
 
-def readUnicodePath(path):
-    stream = open(path,"rb")
-    bytes = bytearray(stream.read())
-    numpyArray = np.asarray(bytes,dtype=np.uint8)
-    img_bgr = cv2.imdecode(numpyArray, cv2.IMREAD_UNCHANGED)
-    return img_bgr
-
-class Container():
-    def __init__(self):
-        self.front = []
-        self.collapse = None
-        self.back = []
-
-class Artifact():
-    def __init__(self):
-        self.raw = None
-        self.shape = None
-
-        self.image = Container()
-        self.binary = Container()
-        self.masks = Container()
-        self.contours = Container()
-
-        self.availableParts = ['front', 'back']
-
-    def load(self, path):
-        self.image.raw = readUnicodePath(path)
-        self.image.front[0] = readUnicodePath(path[:-5]+"-외"+path[-4:])
-        self.image.back[0] = readUnicodePath(path[:-5]+"-내"+path[-4:])
-        self.shape = self.image.raw.shape
-
-    def _binarize(im):
-        im = cv2.cvtColor(im.copy(), cv2.COLOR_BGR2GRAY)
-        im = cv2.GaussianBlur(im, (5,5), 25)
-        r, im = cv2.threshold(im, 250, 255, cv2.THRESH_BINARY_INV)
-        return im
-
-    def binarize(self):
-        for part in self.availableParts:
-            for im in self.image[part]:
-                im = self._binarize(im)
-                self.binary[part].append(im)
-
-        self.findContours()
-        self.generateMask()
-
-    def findContours(self):
-        for part in self.availableParts:
-            for bin_im in self.binary[part]:
-                conts, hier = cv2.findContours(bin_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-                self.contours[part].append(conts)
-
-    def generate_masks(self):
-        for part in self.availableParts:
-            for cont in self.contours[part]:
-                mask = np.zeros(self.image.shape[:1], np.uint8)
-                cv2.drawContours(mask, [cont], 0, 255, -1)
-                self.masks.append(mask)
-
-samples = []
-
-def load(): # Depth-Based Segmentation
-    global samples
-    for name in ["고배", "굽다리접시1", "토기6"]:
-        art = Artifact()
-        art.load("../캐럿펀트 샘플 데이터/"+name+".png")
-        art.binarize()
-        samples.append()
-
-
-
-def getFrontContour():
-    global samples
-    for artifact in samples:
-        for b in artifact.binary.front:
-            _getContours(b)
-
-class M():
-    def __init__(self):
-        self.mlb = []
-        self.center = 0
-        self.masks = []
-
-samples = [];
-
-def analyze():
-    global samples
-    for m in samples:
-        for a in m.mlb:
-            k = 1
-            bin_src = cv2.dilate(a, (5,5), iterations=k)
-            contours, hierarchy = cv2.findContours(bin_src, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-            print(len(contours))
-            for cont in contours:
-                canvas = np.zeros(bin_src.shape, np.uint8)
-                cv2.drawContours(canvas, [cont], 0, 255, -1)
-                m.masks.append(canvas)
-
-def mask_operation(image, mask):
-    pass
-
-open_files()
-analyze()
-
-for i in range(len(samples)):
-    samp = samples[i]
-    for j in range(len(samp.masks)):
-        mask = samp.masks[j]
-        cv2.imwrite("../mask_%d_%d.jpg"%(i,j), mask)
-    for k in range(len(samp.mlb)):
-        mlb = samp.mlb[k]
-        cv2.imwrite("../mlb_%d_%d.jpg"%(i,k),mlb)
-cv2.waitKey(0)
-exit()
-
-
-
-img=cv2.imread('test.jpg', cv2.IMREAD_GRAYSCALE)
-
-cut1=img[0:256, 0:381]
-cut2=img[0:256, 381:801]
-cut3=img[257:664,0:381]
-cut4=img[257:664,381:801]
-ret, thr=cv2.threshold(img,255,255,0)
-cut_b1=thr[0:256, 0:381]
-cut_b2=thr[0:256, 381:801]
-cut_b3=thr[257:664,0:380]
-cut_b4=thr[257:664,381:801]
-
-
-cv2.imshow('cut1',cut1)
-cv2.imshow('cut2',cut2)
-cv2.imshow('cut3',cut3)
-cv2.imshow('cut4',cut4)
-
-blur1=cv2.bilateralFilter(cut1,3,50,50)
-blur1=cv2.bilateralFilter(blur1,3,60,60)
-canny1=cv2.Canny(blur1,100,200)
-contours, hierachy=cv2.findContours(canny1, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-cv2.drawContours(cut_b1, contours, -1, (255,255,255), 1)
-cv2.imshow('rcut1',cut1)
-
-blur2=cv2.medianBlur(cut2,5)
-blur2=cv2.medianBlur(blur2,7)
-canny2=cv2.Canny(blur2,100,200)
-contours2, hierachy=cv2.findContours(canny2, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-cv2.drawContours(cut_b2, contours2, -1, (255,255,255), 1)
-cv2.imshow('rcut2',cut2)
-
-blur3=cv2.GaussianBlur(cut3,(3,3),0)
-
-blur3=cv2.GaussianBlur(blur3,(7,7),0)
-canny3=cv2.Canny(blur3,40,60)
-contours3, hierachy=cv2.findContours(canny3, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-cv2.drawContours(cut_b3, contours3, -1, (255,255,255), 1)
-cv2.imshow('rcut3',cut3)
-
-blur4=cv2.medianBlur(cut4,3)
-blur4=cv2.medianBlur(blur4,5)
-canny4=cv2.Canny(blur4,78,188)
-contours4, hierachy=cv2.findContours(canny4, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
-cv2.drawContours(cut_b4, contours4, -1, (255,255,255), 1)
-cv2.imshow('rcut4',cut4)
-
-cv2.imshow('canny1', canny1)
-cv2.imshow('canny2',canny2)
-cv2.imshow('canny3',canny3)
-cv2.imshow('canny4',canny4)
-cv2.imshow('contours',img)
-cv2.imshow('th',thr)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+    # 2-B1 - opt2. Edge 검출
+    edge = cv2.Canny(blurred, 50, 150, apertureSize=3)
+    # 2-B2
+    contours, hierarchy = cv2.findContours(edge, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    for length in range(1,2):
+        canvas = np.zeros(gray.shape, np.uint8)
+        cv2.drawContours(canvas, contours, -1, 255, length)
+        cv2.imwrite("../%s_oldway_edge%d.jpg"%(fname,length), canvas)class Artifacts_Face():    def __init__(self):        self.gray_image = None        self.bin_image = {            'default' : None,            'body'   : [], # Multi Layer Bin images            'window' : []        }        self.contours = None    def build_from(self, gray):        self.gray_image = gray        self.binarize()        self.findContour()    def binarize(self):        src = cv2.GaussianBlur(self.gray_image, (5,5), 25)        r, thresh = cv2.threshold(src, 250, 255, cv2.THRESH_BINARY_INV)        morphed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE,(5,5), iterations=3)        self.bin_image['default'] = morphed    def findContour(self):        contours, hierarchy = cv2.findContours(self.bin_image['default'], cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)        self.contours = contours        for i in range(len(contours)):            cont = contours[i]            hier = hierarchy[0,i]            canvas = np.zeros(self.gray_image.shape, np.uint8)            cv2.drawContours(canvas, [cont], 0, 255, -1) # Fill            isBody = hier[3] < 0            if isBody:                self.bin_image['body'].append(canvas)            else:                self.bin_image['window'].append(canvas)                    def apply_mask(self, src, mask, borderSize):        ksize = 2*borderSize + 1        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(ksize,ksize))        dilation = cv2.dilate(mask,kernel)        return cv2.bitwise_and(src, src, mask=dilation)class Artifact():    def __init__(self):        self.raw = None        self.shape = None        self.name = ""                self.faces = {            'front' : Artifacts_Face(),            'slice' : Artifacts_Face(),            'back'  : Artifacts_Face(),        }    def load(self, path):        self.raw = readUnicodePath(path)        self.shape = self.raw.shape        # TODO - Add "Auto Depth-Based-Segmentation" feature        path = path[:-4]        pack = [readUnicodePath(path+t) for t in ["-외.png","-내.png"]]        pack = [cv2.cvtColor(t, cv2.COLOR_BGR2GRAY) for t in pack]        front, back = pack        self.faces['front'].build_from(front)        self.faces['back'].build_from(back)        #self.faces['slice'].build_from(np.zeros(front.shape,np.uint8))        __main__()exit()
