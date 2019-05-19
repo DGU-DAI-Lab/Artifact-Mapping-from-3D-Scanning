@@ -22,16 +22,16 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Artifact_Mapping_from_3D_Scanning.py" />
-    <Compile Include="HJnDJ.py">
+    <Compile Include="Artifact_Face.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="oldway.py">
+    <Compile Include="Newway.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Point.py">
+    <Compile Include="Artifact.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="DepthSegmentation.py">
+    <Compile Include="Oldway.py">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
