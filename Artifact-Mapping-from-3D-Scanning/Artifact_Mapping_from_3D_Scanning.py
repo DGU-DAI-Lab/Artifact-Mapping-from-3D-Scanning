@@ -33,9 +33,17 @@ def __main__():
             opacity *= .3
 
             cv2.imwrite("../%s_%s_%s.jpg" % (artifact.name, section, "all-contours"), result)
+            
+            cv2.imwrite("../%s_%s_%s_%s.jpg" % (artifact.name, section, 'mask', 'default'), artifact.faces[section].bin_image['default'])
+            for bin_part in ['body', 'window']:
+                for i in range(len(artifact.faces[section].bin_image[bin_part])):
+                    mask = artifact.faces[section].bin_image[bin_part][i]
+                    cv2.imwrite("../%s_%s_%s_%s_%d.jpg" % (artifact.name, section, 'mask', bin_part, i), mask)
         cv2.imwrite("../%s_%s.jpg" % (artifact.name, "all-contours"), final)
     # Fin.
+    print("all done!")
     cv2.waitKey(0)
+    input()
 
 
 def load_samples():

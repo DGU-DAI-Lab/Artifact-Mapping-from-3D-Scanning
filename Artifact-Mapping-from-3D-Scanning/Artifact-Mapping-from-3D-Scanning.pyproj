@@ -25,6 +25,9 @@
     <Compile Include="Artifact_Face.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="DepthSegment.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Newway.py">
       <SubType>Code</SubType>
     </Compile>
