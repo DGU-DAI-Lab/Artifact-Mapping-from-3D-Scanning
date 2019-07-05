@@ -3,7 +3,7 @@ import numpy as np
 from Artifact_Face import *
 
 class Abstract_Artifact():
-    def __init__(self):
+    def __init__(self, path):
         # Original source file
         self.raw = None
 

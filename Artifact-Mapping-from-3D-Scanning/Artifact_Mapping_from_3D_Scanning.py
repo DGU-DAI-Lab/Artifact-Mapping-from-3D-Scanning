@@ -1,59 +1,17 @@
 import cv2
 import numpy as np
+from stl import mesh
 
-from Artifact import *
-from Oldway import *
-from Newway import *
+from __3D__ import *
 
-CONTOUR_THICKNESS = 1
-ARTIFACT_LIST = [
-    { 'name' : "고배",        'altname' : "a" },
-    { 'name' : "굽다리접시1", 'altname' : "b" },
-    { 'name' : "토기6",       'altname' : "c" }
-]
-
+directory = 'E:/Git/clone repository/Artifact-Mapping-from-3D-Scanning/토기 예시 데이터/3D 스캔 파일/'
+#m = mesh.Mesh.from_file(directory+'토기1.stl')
+#m.normals
+m = None
 def __main__():
-    global CONTOUR_THICKNESS
-    # Depth-Based Segmentation
-    # Body/Window Seperation
-    samples = load_samples()
-    for artifact in samples:
-        print("Artifact processing - [%s]" % (artifact.name))
-        oldway = Oldway(artifact)
-        oldway.CONTOUR_THICKNESS = CONTOUR_THICKNESS
-
-        newway = Newway(artifact)
-        newway.CONTOUR_THICKNESS = CONTOUR_THICKNESS
-        
-        opacity = 1
-        final = np.zeros(artifact.shape,dtype=np.uint8)
-        for section in ["front", "back", "slice"]:
-            result = newway.combination[section]
-            final = cv2.addWeighted(final, 1, result, opacity, 0)
-            opacity *= .3
-
-            cv2.imwrite("../%s_%s_%s.jpg" % (artifact.name, section, "all-contours"), result)
-            
-            cv2.imwrite("../%s_%s_%s_%s.jpg" % (artifact.name, section, 'mask', 'default'), artifact.faces[section].bin_image['default'])
-            for bin_part in ['body', 'window']:
-                for i in range(len(artifact.faces[section].bin_image[bin_part])):
-                    mask = artifact.faces[section].bin_image[bin_part][i]
-                    cv2.imwrite("../%s_%s_%s_%s_%d.jpg" % (artifact.name, section, 'mask', bin_part, i), mask)
-        cv2.imwrite("../%s_%s.jpg" % (artifact.name, "all-contours"), final)
-    # Fin.
-    print("all done!")
-    cv2.waitKey(0)
-    input()
-
-
-def load_samples():
-    samples = []
-    for info in ARTIFACT_LIST:
-        artifact = Artifact()
-        artifact.name = info['altname']
-        artifact.load("../test_data/%s.png" % info['name']) # TO CHANGE
-        samples.append(artifact)
-    return samples
+    ROTATE(m)
+    #nm.save('./output.stl')
         
 __main__()
+input()
 exit()

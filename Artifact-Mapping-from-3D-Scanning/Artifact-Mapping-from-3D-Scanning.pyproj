@@ -37,6 +37,12 @@
     <Compile Include="Oldway.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="__2D__.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="__3D__.py">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Content Include="Readme.txt" />
