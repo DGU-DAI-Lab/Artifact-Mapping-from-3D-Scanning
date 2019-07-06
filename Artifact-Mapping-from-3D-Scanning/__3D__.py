@@ -8,64 +8,129 @@ from mpl_toolkits import mplot3d
 from matplotlib import pyplot
 
 def ROTATE(obj):
-    #_, cog, _ = obj.get_mass_properties() # Center of Gravity
-    #g = [1.57, -3.57, -5.95]
-    g = [0, 1, 0]
-    I = [[1,0,0],
-         [0,1,0],
-         [0,0,1]]
+    """물체의 부피중심으로 부터 무게중심으로 향하는 벡터 f를 구하고,
+    f를 z축 음의 방향(0,0,-k)으로 회전시키기 위한 변환행렬 R을 구한다."""
+    if not isinstance(obj, mesh.Mesh):
+        raise BaseException('NOOooOoOo')
 
-    roll = V_ORTHOGONAL(g[:2],[1,0])
-    g2 = M_ROTATE_ROLL(g, -roll) # XZ평면위
-    yaw = V_ORTHOGONAL([g2[0], g2[2]],[0,1])
-    yaw += np.pi
+    _, cog, _ = obj.get_mass_properties() # Center of Gravity
+    cob = BOUDING_BOX_CENTER(obj)
+
+    f = np.subtract(cog, cob)
+    # TEST DATA
+    #f = np.array([2.8422805, -5.07449328, -3.66630284])
+    #f = np.array([1.57, -3.57, -5.95])
+    #f = np.array([1, 1, 0])
     
-    res = M_ROTATE_ROLL(g2, -yaw) # XZ평면위
+    # 1
+    f_orth = f[:2]
+    a = V_ORTHOGONAL(f_orth, [1,0])
+    R1 = M_ROTATE_YAW(-a)
+    # 2
+    f1 = np.matmul(R1, f)
+    b = V_ORTHOGONAL([f1[0],f1[2]], [0,1])
+    R2 = M_ROTATE_PITCH(np.pi - b)
     
-    print('roll :', roll/np.pi)
-    print(' yaw :', yaw/np.pi)
-    print('trans. :', res)
-   
+    # 3
+    R = np.matmul(R2, R1)
+    
+    def __chk__():
+        print('f : ', f)
+        print('a, b : ', a/np.pi, b/np.pi)
+        print('f_orth : ', f_orth)
+        print('f1 : ', f1)
+        print('f2 : ', np.matmul(R2,f1))
+        print('\nR1 :\n', R1)
+        print('\nR2 :\n', R2)
+        print('\nR :\n', R)
+
+        print('applied : ', __apply_epsilon__(np.matmul(R,f)))
+    __chk__()
     return obj
 
-def V_ORTHOGONAL(vect, unit):
-    theta = np.arccos(np.dot(vect,unit) / np.linalg.norm(vect)) #벡터 unit의 norm은 1일 것이므로 생략한다
-    if vect[1] < 0:
-        theta = 2*np.pi - theta
+def __apply_epsilon__(err_vect):
+    """지정한 만큼의 오차는 무시.."""
+    eps = 0.0000000001
+    for i in range(err_vect.size):
+        if eps > np.abs(err_vect.item(i)):
+            err_vect.itemset(i, 0)
+    return err_vect
+
+def V_DUM_ADD(matrix):
+    """행렬에 더미 데이터를 추가"""
+    if (matrix.ndim == 1):
+        return np.append(matrix, 1)
+    w,h = matrix.shape
+    new_mat = np.identity(w+1)
+    for x in range(w):
+        for y in range(h):
+            new_mat.itemset((x,y), matrix.item(x,y))
+    print(matrix)
+    print(new_mat)
+    return new_mat
+
+def V_DUM_DEL(matrix):
+    """행렬에 존재하는 더미 데이터를 삭제"""
+    if (matrix.ndim == 1):
+        return matrix[:-1]
+    new_shape = np.subtract(matrix.shape, 1)
+    new_mat = np.zeros(new_shape)
+    w,h = new_shape
+    for x in range(w):
+        for y in range(h):
+            new_mat.itemset((x,y), matrix.item(x,y))
+    return new_mat
+
+def V_ORTHOGONAL(vect2D, unit):
+    """두 벡터의 회전각을 구한다"""
+    norm = np.linalg.norm(vect2D)
+    if norm == 0:
+        return 0
+
+    theta = np.arccos(np.dot(vect2D,unit) / norm) #벡터 unit의 norm은 1일 것이므로 생략한다
+    if (unit[0] == 1 and vect2D[1] < 0) or (unit[1] == 1 and vect2D[0] < 0):
+        theta = theta * -1
     return theta
 
 def M_TRANSLATE(matrix, vector):
     x, y, z = vector
-    transform = [
+    return np.array([
         [   1,  0,  0,  x],
         [   0,  1,  0,  y],
         [   0,  0,  1,  z],
-        [   0,  0,  0,  1]]
-    return np.matmul(matrix, transform)
+        [   0,  0,  0,  1]])
 
-def M_ROTATE_PITCH(matrix, theta):
-    c = np.cos(theta)
+def __theta_to_sin_cos__(theta):
     s = np.sin(theta)
-    return np.matmul([
-        [ 1,  0,  0],
-        [ 0,  c, -s],
-        [ 0,  s,  c]], matrix)
+    c = np.cos(theta)
 
-def M_ROTATE_YAW(matrix, theta):
-    c = np.cos(theta)
-    s = np.sin(theta)
-    return np.matmul([
+    rem = theta/np.pi % 1
+    if rem == 0:
+        s = 0
+    elif rem == .5:
+        c = 0
+    return s, c
+
+def M_ROTATE_PITCH(theta):
+    s, c = __theta_to_sin_cos__(theta)
+    return np.array([
         [ c,  0,  s],
         [ 0,  1,  0],
-        [-s,  0,  c]], matrix)
+        [-s,  0,  c]])
 
-def M_ROTATE_ROLL(matrix, theta):
-    c = np.cos(theta)
-    s = np.sin(theta)
-    return np.matmul([
+def M_ROTATE_YAW(theta):
+    s, c = __theta_to_sin_cos__(theta)
+    return np.array([
         [ c, -s,  0],
         [ s,  c,  0],
-        [ 0,  0,  1]], matrix)
+        [ 0,  0,  1]])
+
+def M_ROTATE_ROLL(theta):
+    s, c = __theta_to_sin_cos__(theta)
+    return np.array([
+        [ 1,  0,  0],
+        [ 0,  c, -s],
+        [ 0,  s,  c]])
 
 def BOUDING_BOX_CENTER(obj):
     minx, maxx, miny, maxy, minz, maxz = BOUNDING_BOX(obj)
