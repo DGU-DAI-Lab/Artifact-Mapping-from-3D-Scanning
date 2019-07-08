@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>b13868c9-5899-4f6d-ad88-0e295e0a039a</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Artifact_Mapping_from_3D_Scanning.py</StartupFile>
+    <StartupFile>DepthSegment.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -37,7 +37,7 @@
     <Compile Include="Oldway.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="__2D__.py">
+    <Compile Include="Rotate3D.py">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="__3D__.py">
