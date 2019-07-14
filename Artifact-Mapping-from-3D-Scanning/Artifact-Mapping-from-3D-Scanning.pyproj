@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>b13868c9-5899-4f6d-ad88-0e295e0a039a</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>DepthSegment.py</StartupFile>
+    <StartupFile>Artifact_Mapping_from_3D_Scanning.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

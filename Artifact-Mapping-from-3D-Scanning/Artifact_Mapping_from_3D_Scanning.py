@@ -3,18 +3,21 @@ import numpy as np
 from stl import mesh
 
 from __3D__ import *
+from DepthSegment import *
 
-def load_obj():
-    directory = '../토기 예시 데이터/3D 스캔 파일/'
-    m = mesh.Mesh.from_file(directory+'토기1.stl')
-    m.normals
-    return m
+testmodel1 = '../Torus.stl'
+testmodel2 = '../토기 예시 데이터/3D 스캔 파일/토기1.stl'
 
 def __main__():
-    m = load_obj()
-    nm = ROTATE.AUTO_ALIGN(m)
-    nm.save('./output.stl')
-        
+    m = mesh.Mesh.from_file(testmodel2)
+    m.normals
+    
+    svg = create_svg(m)
+    f = open('../output.svg','w')
+    f.write(svg)
+    f.close()
+
+print('Start.')
 __main__()
-input()
+input('Done.')
 exit()

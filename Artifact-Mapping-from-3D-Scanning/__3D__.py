@@ -36,3 +36,5 @@ def BOUNDING_BOX(obj):
             maxz = max(p[stl.Dimension.Z], maxz)
             minz = min(p[stl.Dimension.Z], minz)
     return minx, maxx, miny, maxy, minz, maxz
+
+
