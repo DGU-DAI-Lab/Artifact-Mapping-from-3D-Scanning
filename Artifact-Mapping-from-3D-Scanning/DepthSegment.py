@@ -1,11 +1,12 @@
 from stl import mesh
 import stl
 import numpy as np
-import math
 
-import numba
 from numba import jit
+import numba
 
+import math
+import enum
 
 #obj = mesh.Mesh.from_file('../토기 예시 데이터/3D 스캔 파일/토기1.stl')
 
@@ -26,69 +27,56 @@ from numba import jit
 #            considers.append(vect)
 #        i += 1
 #        print("\r%d/%d"%(i,l), end="")
-  
-def contained_angle(vect1, vect2):
-    norm = np.linalg.norm(vect1) * np.linalg.norm(vect2)
-    if (norm == 0):
+
+class Dimension(enum.Enum):
+    X = x = 0
+    Y = y = 1
+    Z = z = 2
+
+def DepthSegmentation(obj):
+    assert type(obj) is 'mesh.Mesh'
+    for f in obj.points:
+        facet = Facet(f)
+        pass
+    return Surface
+
+class Surface:
+    def cut_mesh_into_surfaces(self):
+        pass
+
+class Facet:
+    def __init__(self,facet):
+
+        pass
+
+    def a:
+        pass
+
+    def sort_in_order(self,axis=Dimension.Z):
+        """"""
+        A = B = C = 0 # A < B < C
+        for i in [0,1,2]:
+            A = i if point.item(3*i+2) < point.item(3*A+2) else A # min
+            C = i if point.item(3*i+2) > point.item(3*C+2) else C # max
+        B = (3-A-C) if A != C else B
+        return np.array([[point.item(3*A+i) for i in [0,1,2]],
+                         [point.item(3*B+i) for i in [0,1,2]],
+                         [point.item(3*C+i) for i in [0,1,2]]])
+
+    def decide_gradient(self):
+        pass
+
+def rotate_angle(vector_from, vector_to):
+    """두 벡터의 회전각을 구한다"""
+    norm = np.linalg.norm(vector_from) * np.linalg.norm(vector_to)
+    if norm == 0:
         print('\nWarning: Norm is zero. Cannot calculate contained angle of the vector with norm zero.')
         return 0
-    return np.arccos(np.dot(vect1,vect2) / norm)
-
-def decide_gradient_vector(tri):
-    A = tri[0]
-    B = tri[1]
-    C = tri[2]
-    # Calc Euclid distance of AB, AC
-    d1 = math.sqrt((A[0]-B[0])**2+(A[1]-B[1])**2) # AB
-    d2 = math.sqrt((A[0]-C[0])**2+(A[1]-C[1])**2) # AC
-    # Calc the size of contained angles A, C
-    a = contained_angle(np.subtract(A,B),np.subtract(A,C)) # A
-    r = contained_angle(np.subtract(C,A),np.subtract(C,B)) # C
-    # Substitution for some values which are expensive to calc.
-    x = d1*(C[2]-A[2]) * math.cos(a)*(-1)
-    c = d1*(C[2]-A[2]) * math.sin(a) + d2*(B[2]-A[2])
-    # Calc theta and the length of AC'
-    theta = np.arctan((x*np.tan(r)+c)/(x/np.tan(r)+c))
-    ACp = d2*math.sin(theta+r) # AC'
-    # Y-axis
-    # Return AC' as a 2D vector
-    return np.array([math.sin(theta)*ACp, math.cos(theta)*(-ACp)])
-
-def align(point):
-    A = B = C = 0 # A < B < C
-    for i in [0,1,2]:
-        A = i if point.item(3*i+2) < point.item(3*A+2) else A # min
-        C = i if point.item(3*i+2) > point.item(3*C+2) else C # max
-    B = (3-A-C) if A != C else B
-    return np.array([[point.item(3*A+i) for i in [0,1,2]],
-                     [point.item(3*B+i) for i in [0,1,2]],
-                     [point.item(3*C+i) for i in [0,1,2]]])
-
-def triangle_start_end(tri):
-    startX = endX = tri[0][0]
-    startY = endY = tri[0][1]
-    startZ = endZ = tri[0][2]
-    for p in tri[1:]:
-        startX = min(p[0],startX)
-        startY = min(p[1],startY)
-        startZ = min(p[1],startZ)
-        endX = max(p[0],endX)
-        endY = max(p[1],endY)
-        endZ = max(p[1],endZ)
-    return startX,endX,startY,endY,startZ,endZ
-
-def boundingBox(obj):
-    minx = maxx = obj.points[0][0]
-    miny = maxy = obj.points[0][1]
-    minz = maxz = obj.points[0][2]
-    for p in obj.points[1:]:
-        maxx = max(p[0], maxx)
-        minx = min(p[0], minx)
-        maxy = max(p[1], maxy)
-        miny = min(p[1], miny)
-        maxz = max(p[2], maxz)
-        minz = min(p[2], minz)
-    return minx, maxx, miny, maxy, minz, maxz
+    sin = np.linalg.det([vector_from, vector_to]) / norm
+    cos = np.dot(vector_from,vector_to) / norm
+    rad = np.arccos(cos) # 두 벡터의 사잇각
+    # 사잇각의 부호를 올바르게 정정하여 회전각을 구함.
+    return rad if (np.arcsin(sin) > 0) else -rad
 
 
 def create_svg(obj):
@@ -138,5 +126,61 @@ def create_svg(obj):
         progress += 1
         print('\r>>> Work in progress %d/%d'%(progress,points), end='')
     return '<svg '+version+' style="margin:1000px"><defs>'+gradients+'</defs>'+polygons+'</svg>'
+
+def contained_angle(vect1, vect2):
+    norm = np.linalg.norm(vect1) * np.linalg.norm(vect2)
+    if (norm == 0):
+        print('\nWarning: Norm is zero. Cannot calculate contained angle of the vector with norm zero.')
+        return 0
+    return np.arccos(np.dot(vect1,vect2) / norm)
+
+def decide_gradient_vector(tri):
+    A = tri[0]
+    B = tri[1]
+    C = tri[2]
+    # Calc Euclid distance of AB, AC
+    d1 = math.sqrt((A[0]-B[0])**2+(A[1]-B[1])**2) # AB
+    d2 = math.sqrt((A[0]-C[0])**2+(A[1]-C[1])**2) # AC
+    # Calc the size of contained angles A, C
+    a = contained_angle(np.subtract(A,B),np.subtract(A,C)) # A
+    r = contained_angle(np.subtract(C,A),np.subtract(C,B)) # C
+    # Substitution for some values which are expensive to calc.
+    x = d1*(C[2]-A[2]) * math.cos(a)*(-1)
+    c = d1*(C[2]-A[2]) * math.sin(a) + d2*(B[2]-A[2])
+    # Calc theta and the length of AC'
+    theta = np.arctan((x*np.tan(r)+c)/(x/np.tan(r)+c))
+    ACp = d2*math.sin(theta+r) # AC'
+    # Y-axis
+    # Return AC' as a 2D vector
+    return np.array([math.sin(theta)*ACp, math.cos(theta)*(-ACp)])
+
+
+def triangle_start_end(tri):
+    startX = endX = tri[0][0]
+    startY = endY = tri[0][1]
+    startZ = endZ = tri[0][2]
+    for p in tri[1:]:
+        startX = min(p[0],startX)
+        startY = min(p[1],startY)
+        startZ = min(p[1],startZ)
+        endX = max(p[0],endX)
+        endY = max(p[1],endY)
+        endZ = max(p[1],endZ)
+    return startX,endX,startY,endY,startZ,endZ
+
+def boundingBox(obj):
+    minx = maxx = obj.points[0,0]
+    miny = maxy = obj.points[0,1]
+    minz = maxz = obj.points[0,2]
+    for p in obj.points[1:]:
+        maxx = max(p[0], maxx)
+        minx = min(p[0], minx)
+        maxy = max(p[1], maxy)
+        miny = min(p[1], miny)
+        maxz = max(p[2], maxz)
+        minz = min(p[2], minz)
+    return minx, maxx, miny, maxy, minz, maxz
+
+
 
 # what is considers()
