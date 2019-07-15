@@ -9,7 +9,7 @@ testmodel1 = '../Torus.stl'
 testmodel2 = '../토기 예시 데이터/3D 스캔 파일/토기1.stl'
 
 def __main__():
-    m = mesh.Mesh.from_file(testmodel2)
+    m = mesh.Mesh.from_file(testmodel1)
     m.normals
     
     svg = create_svg(m)
