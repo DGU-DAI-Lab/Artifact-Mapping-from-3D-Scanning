@@ -28,6 +28,7 @@
     <Compile Include="DepthSegment.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Facet.py" />
     <Compile Include="Newway.py">
       <SubType>Code</SubType>
     </Compile>

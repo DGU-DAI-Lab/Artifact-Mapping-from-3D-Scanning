@@ -3,37 +3,23 @@ import stl
 import numpy as np
 import math
 
-#from numba import jit
-#import numba
-
-#obj = mesh.Mesh.from_file('../토기 예시 데이터/3D 스캔 파일/토기1.stl')
-
-
-#considers = []
-
-#@jit
-#def a():
-#    i = 0
-#    l = len(obj.vectors)
-#    for vect in obj.vectors:
-#        behind = front = False
-#        direction = np.cross(np.subtract(vect[0],vect[1]), np.subtract(vect[0],vect[2]))
-#        for x,y,z in vect:
-#            front  |= (x >= 0)
-#            behind |= (x <= 0)
-#        if front and behind:
-#            considers.append(vect)
-#        i += 1
-#        print("\r%d/%d"%(i,l), end="")
-
-from Facet import Facet, Dimension
+from Facet import Facet,Dimension
 
 def DepthSegmentation(obj,axis=Dimension.Z):
-    assert type(obj) is 'mesh.Mesh'
+    assert isinstance(obj,mesh.Mesh)
     front  = Surface()
     behind = Surface()
     slice  = Surface()
-    for facet in [Facet(f) for f in obj.points]:
+    # ProgressBar
+    print('D-Segmentation start.')
+    n_points = len(obj.points)
+    progress = 0
+    for f in obj.points:
+        # ProgressBar
+        progress += 1
+        print('\r>>> Work in progress %d/%d\t'%(progress,n_points), end='')
+
+        facet = Facet(f)
         # Front or behind the xy-surface
         isFront = isBehind = False
         for ax in facet.points[:,axis]:
@@ -51,6 +37,7 @@ def DepthSegmentation(obj,axis=Dimension.Z):
             front.append(facet)
         if isBehind:
             behind.append(facet)
+    print('D-Segmentation done.')
     return front,slice,behind
 
 class Surface:
@@ -58,27 +45,28 @@ class Surface:
         self.facets = []
 
     def append(self,facet):
-        assert type(facet) is 'Facet'
+        assert isinstance(facet,Facet)
         self.facets.append(facet)
 
     def boundingBox(self):
-        facet = self.facets[0]
-        minx = maxx = facet.points[0,0]
-        miny = maxy = facet.points[0,1]
-        minz = maxz = facet.points[0,2]
-        for facet in self.facets[:]:
-            maxx = max(facet.points[:,0], maxx)
-            minx = min(facet.points[:,0], minx)
-            maxy = max(facet.points[:,1], maxy)
-            miny = min(facet.points[:,1], miny)
-            maxz = max(facet.points[:,2], maxz)
-            minz = min(facet.points[:,2], minz)
+        p = self.facets[0].points
+        minx = maxx = p[0,0]
+        miny = maxy = p[0,1]
+        minz = maxz = p[0,2]
+        for facet in self.facets:
+            for p in facet.points:
+                maxx = max(p[0], maxx)
+                minx = min(p[0], minx)
+                maxy = max(p[1], maxy)
+                miny = min(p[1], miny)
+                maxz = max(p[2], maxz)
+                minz = min(p[2], minz)
         return {'minx':minx, 'maxx':maxx,
                 'miny':miny, 'maxy':maxy,
                 'minz':minz, 'maxz':maxz}
 
     #### FOR SVG CONVERT ###
-    def decide_gradient_vector(self,facet): # Dimension.Z
+    def decide_gradient_vector(self,facet,theta=False): # Dimension.Z
         A,B,C = facet.points
         # Calc Euclid distance of AB, AC
         d1 = math.sqrt((A[0]-B[0])**2+(A[1]-B[1])**2) # AB
@@ -90,59 +78,76 @@ class Surface:
         x = d1*(C[2]-A[2]) * math.cos(a)*(-1)
         c = d1*(C[2]-A[2]) * math.sin(a) + d2*(B[2]-A[2])
         # Calc theta and the length of AC'
-        theta = np.arctan((x*np.tan(r)+c)/(x/np.tan(r)+c))
-        ACp = d2*math.sin(theta+r) # AC'
+        thet = np.arctan((x*np.tan(r)+c)/(x/np.tan(r)+c))
+        ACp = d2*math.sin(thet+r) # AC'
         # Y-axis
         # Return AC' as a 2D vector
-        return np.array([math.sin(theta)*ACp, math.cos(theta)*(-ACp)])
+        if theta:
+            return np.array([math.sin(thet)*ACp, math.cos(thet)*(-ACp), thet])
+        return np.array([math.sin(thet)*ACp, math.cos(thet)*(-ACp)])
     
     def to_svg(self):
         VERSION = 'xmlns="http://www.w3.org/2000/svg" xmlns:xlink= "http://www.w3.org/1999/xlink"'
+        SCALE = 2
+        COLOR_SCALE = 0xFF
         gradients = polygons = ''
-
+        # Get propertises of the surface
         surface_bounds = self.boundingBox()
-        color_range = surface_bounds.maxz - surface_bounds.minz
-        
+        s_mins = [surface_bounds[a] for a in ['minx','miny','minz']]
+        s_maxs = [surface_bounds[a] for a in ['maxx','maxy','maxz']]
+        color_range = s_maxs[Dimension.Z] - s_mins[Dimension.Z]
+        # ProgressBar
+        print('Start converting Surface into SVG...')
         n_facets = len(self.facets)
         progress = 0
         for facet in self.facets:
-            # Get propertises of this triangle
-            facet_bounds = facet.boundingBox
-            gx,gy = self.decide_gradient_vector(facet)
-            #
-            width  = facet_bounds.maxx - facet_bounds.minx
-            height = facet_bounds.maxy - facet_bounds.miny
-            #
-            if width*height == 0:
-                print('\nThis is a line... :(')
-                continue
-            # Use relative values
-            A = np.subtract(facet[0],[minx,miny,minz])
-            B = np.subtract(facet[1],[minx,miny,minz])
-            C = np.subtract(facet[2],[minx,miny,minz])
-            # SVG Attributes
-            x1 = (A[Dimension.X])   /width *100 # Relative X start
-            x2 = (A[Dimension.X]+gx)/width *100 # Relative X end
-            y1 = (A[Dimension.Y])   /height*100 # Relative Y start
-            y2 = (A[Dimension.Y]+vy)/height*100 # Relative Y end
-            colorStart = hex(round((A[Dimension.Z]/color_range)*0xFFFFFF).astype(np.uint32)).replace('0x','')
-            colorEnd   = hex(round((C[Dimension.Z]/color_range)*0xFFFFFF).astype(np.uint32)).replace('0x','')
-            stopColor1 = '0'*(6-len(colorStart)) + colorStart
-            stopColor2 = '0'*(6-len(colorEnd))   + colorEnd
-            
-            # TEST
-            A,B,C = np.multiply([A,B,C],10)
-
-            # Write SVG Triangle
-            polygons  += '<polygon fill="url(#g%d)" points="%lf %lf %lf %lf %lf %lf"/>'%(p,xA,yA,xB,yB,xC,yC)
-            gradients += '<linearGradient id="g%d" x1="%lf%%" y1="%lf%%" x2="%lf%%" y2="%lf%%">'%(p,x1,y1,x2,y2)
-            gradients +=    '<stop offset="0" stop-color="#%s"/>'%(stopColor1)
-            gradients +=    '<stop offset="1" stop-color="#%s"/>'%(stopColor2)
-            gradients += '</linearGradient>'
-            # DEBUG
+            # ProgressBar
             progress += 1
-            print('\r>>> Work in progress %d/%d'%(progress,points), end='')
-        return '<svg '+VERSION+' style="margin:1000px"><defs>'+gradients+'</defs>'+polygons+'</svg>'
+            print('\r>>> Work in progress %d/%d\t'%(progress,n_facets), end='')
+            # Get propertises of this facet
+            A,B,C = facet.points
+            facet_bounds = facet.boundingBox
+            f_mins = [facet_bounds[a] for a in ['minx','miny','minz']]
+            f_maxs = [facet_bounds[a] for a in ['maxx','maxy','maxz']]
+            gx,gy,theta = self.decide_gradient_vector(facet,theta=True)
+            # Use relative values
+            width  = f_maxs[Dimension.X] - f_mins[Dimension.X]
+            height = f_maxs[Dimension.Y] - f_mins[Dimension.Y]
+            # For Lines ### TODO
+            if width*height == 0:
+                print('This is a line... :(')
+                continue
+                #A,B,C = np.multiply([np.subtract(p,s_mins) for p in [A,B,C]],SCALE) # TRANSLATE & SCALE
+                #points = '%lf %lf %lf %lf %lf %lf' % (
+                #    A[Dimension.X],A[Dimension.Y],
+                #    B[Dimension.X],B[Dimension.Y],
+                #    C[Dimension.X],C[Dimension.Y])
+                #polygons  += '<polyline style="fill:none;stroke:black;stroke-width:1" points="%s"/>'%(points)
+            # For Triangles
+            else:
+                d = A[Dimension.X]-f_mins[Dimension.X]
+                colorStart = round(((A[Dimension.Z]-s_mins[Dimension.Z]) / color_range)*COLOR_SCALE).astype(np.uint32)
+                colorEnd   = round(((C[Dimension.Z]-s_mins[Dimension.Z]) / color_range)*COLOR_SCALE).astype(np.uint32)
+                # SVG Attributes
+                x1 = ( d * math.sin(theta)**2) / width  * 100  # Relative X start
+                y1 = (-d * math.sin(theta)*math.cos(theta)) / height * 100  # Relative Y start
+                x2 = x1 + (gx / width  * 100) # Relative X end
+                y2 = y1 + (gy / height * 100) # Relative Y end
+                A,B,C = np.multiply([np.subtract(p,s_mins) for p in [A,B,C]],SCALE) # TRANSLATE & SCALE
+                points = '%lf %lf %lf %lf %lf %lf' % (
+                    A[Dimension.X],A[Dimension.Y],
+                    B[Dimension.X],B[Dimension.Y],
+                    C[Dimension.X],C[Dimension.Y])
+                stopColor1 = 'rgb(%d,%d,%d)'%(colorStart,colorStart,colorStart)
+                stopColor2 = 'rgb(%d,%d,%d)'%(colorEnd,  colorEnd,  colorEnd)
+                # Write SVG Triangle
+                polygons  += '<polygon fill="url(#g%d)" points="%s"/>'%(progress,points)
+                gradients += '<linearGradient id="g%d" x1="0%%" y1="0%%" x2="%lf%%" y2="%lf%%">'%(progress,x2,y2)
+                gradients +=    '<stop offset="0" stop-color="%s"/>'%(stopColor1)
+                gradients +=    '<stop offset="1" stop-color="%s"/>'%(stopColor2)
+                gradients += '</linearGradient>'
+        print('SVG converting done!')
+        return '<svg '+VERSION+' style="margin:32px"><defs>'+gradients+'</defs>'+polygons+'</svg>'
 
 def contained_angle(vect1, vect2):
     """두 벡터의 사잇각을 구한다"""
@@ -163,72 +168,5 @@ def rotate_angle(vector_from, vector_to):
     rad = np.arccos(cos) # 두 벡터의 사잇각
     # 사잇각의 부호를 올바르게 정정하여 회전각을 구함.
     return rad if (np.arcsin(sin) > 0) else -rad
-
-def mesh_boundingBox(obj):
-    p = obj.points[0] # p is a 1x9 matrix : (x1,y1,z1,x2,y2,z2,x3,...)
-    maxx = max(p[0],p[3],p[6])
-    minx = min(p[0],p[3],p[6])
-    maxy = max(p[1],p[4],p[7])
-    miny = min(p[1],p[4],p[7])
-    maxz = max(p[2],p[5],p[8])
-    minz = min(p[2],p[5],p[8])
-    for p in obj.points[1:]:
-        maxx = max(p[0],p[3],p[6], maxx)
-        minx = min(p[0],p[3],p[6], minx)
-        maxy = max(p[1],p[4],p[7], maxy)
-        miny = min(p[1],p[4],p[7], miny)
-        maxz = max(p[2],p[5],p[8], maxz)
-        minz = min(p[2],p[5],p[8], minz)
-    return minx,maxx,miny,maxy,minz,maxz
-
-def create_svg(surface):
-    assert type(surface) is 'Surface'
-    gradients = polygons = ''
-    # Get propertises of this model
-    points = len(obj.points)
-    minx,maxx,miny,maxy,minz,maxz = boundingBox(obj)
-    bandwidth = maxz-minz
-    # Chk Err
-    if bandwidth == 0:
-        raise BaseException('No depth differs. WHY!')
-    progress = 0
-    print('Building svg...')
-    for p in range(len(obj.points)):
-        tri = align(obj.points[p])
-        # Get propertises of this triangle
-        startX,endX,startY,endY,startZ,endZ = triangle_start_end(tri)
-        vx,vy = decide_gradient_vector(tri)
-        # Use relative values
-        xA,yA,zA = np.subtract(tri[0],[minx,miny,minz])
-        xB,yB,zB = np.subtract(tri[1],[minx,miny,minz])
-        xC,yC,zC = np.subtract(tri[2],[minx,miny,minz])
-        width  = endX-startX
-        height = endY-startY
-        # SVG Attributes
-        if width*height == 0:
-            print('\nThis is a line... :(')
-            continue
-        else:
-            x1 = (xA)/width*100     # Relative X start
-            x2 = (xA+vx)/width*100  # Relative X end
-            y1 = (yA)/height*100    # Relative Y start
-            y2 = (yA+vy)/height*100 # Relative Y end
-        colorStart = hex(round((zA/bandwidth)*0xFFFFFF).astype(np.uint32)).replace('0x','')
-        colorEnd   = hex(round((zC/bandwidth)*0xFFFFFF).astype(np.uint32)).replace('0x','')
-        stopColor1 = '0'*(6-len(colorStart)) + colorStart
-        stopColor2 = '0'*(6-len(colorEnd))   + colorEnd
-        # TEST
-        xA,yA,zA,xB,yB,zB,xC,yC,zC = np.multiply([xA,yA,zA,xB,yB,zB,xC,yC,zC],10)
-
-        # Write SVG Triangle
-        polygons  += '<polygon fill="url(#g%d)" points="%lf %lf %lf %lf %lf %lf"/>'%(p,xA,yA,xB,yB,xC,yC)
-        gradients += '<linearGradient id="g%d" x1="%lf%%" y1="%lf%%" x2="%lf%%" y2="%lf%%">'%(p,x1,y1,x2,y2)
-        gradients +=    '<stop offset="0" stop-color="#%s"/>'%(stopColor1)
-        gradients +=    '<stop offset="1" stop-color="#%s"/>'%(stopColor2)
-        gradients += '</linearGradient>'
-        # DEBUG
-        progress += 1
-        print('\r>>> Work in progress %d/%d'%(progress,points), end='')
-    return '<svg '+version+' style="margin:1000px"><defs>'+gradients+'</defs>'+polygons+'</svg>'
 
 # what is considers()
