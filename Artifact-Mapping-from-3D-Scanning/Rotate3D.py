@@ -3,32 +3,35 @@ from stl import mesh
 import numpy as np
 
 class Rotate3D:
-    def AUTO_ALIGN(self, obj):
-        """물체의 부피중심으로 부터 무게중심으로 향하는 벡터 f를 구하고, f를 z축 음의 방향(0,0,-k)으로 회전시키기 위한 변환행렬 R을 구한다."""
+    def auto(self, obj):
+        """물체의 부피중심으로 부터 무게중심으로 향하는 벡터 f를 구하고,
+        f를 z축 음의 방향(0,0,-k)으로 회전시키기 위한 변환행렬 R을 구한다."""
         if not isinstance(obj, mesh.Mesh):
             raise BaseException('NOOooOoOo Wrong file!!!')
-
+        # cog-cov를 f에 대입
         f = self.OBJECT_AXIS(obj)
-    
+        print('gravity vector : ', f)
+        # f와 f를 xz평면에 정사영 시킨 벡터의 회전각을 구함 : yaw
         yaw = self.ANGLE_OF_ROTATION_2D(f[:2],[1,0])
         R1 = self.M_ROTATE_YAW(yaw)
-    
+        # 최소오차허용 및 예외처리
         f1 = self.__allow_err__(np.matmul(R1, f))
         if not (f1[1] == 0):
             print('yaw', yaw/np.pi)
             print('f1', f1)
             raise BaseException('Wrong yaw rotation')
-
+        # f에 yaw회전을 적용한 벡터와 z축 음의방향 사이의 회전각을 구함 : pitch
         pitch = self.ANGLE_OF_ROTATION_2D([f1[0],f1[2]], [0,1])
         R2 = self.M_ROTATE_PITCH(np.pi - pitch)
-
+        # 최소오차허용 및 예외처리
         f2 = self.__allow_err__(np.matmul(R2, f1))
         if not (f2[0] == 0 and f2[1] == 0 and f2[2] < 0):
             print('pitch', pitch/np.pi*180)
             print('f1', f1)
             print('f2', f2)
             raise BaseException('Wrong pitch rotation')
-    
+        print('moved to : ', f2)
+        # R1와 R2의 선형결합
         R = np.matmul(R2, R1)
         obj.rotate_using_matrix(R)
         return obj
@@ -88,3 +91,31 @@ class Rotate3D:
             [ 1,  0,  0],
             [ 0,  c, -s],
             [ 0,  s,  c]])
+    
+
+def BOUDING_BOX_CENTER(obj):
+    minx, maxx, miny, maxy, minz, maxz = BOUNDING_BOX(obj)
+    x = (minx + maxx)/2
+    y = (miny + maxy)/2
+    z = (minz + maxz)/2
+    return x, y, z
+
+def BOUNDING_BOX(obj):
+    minx = maxx = miny = maxy = minz = maxz = None
+    for p in obj.points:
+        # p contains (x, y, z)
+        if minx is None:
+            minx = p[stl.Dimension.X]
+            maxx = p[stl.Dimension.X]
+            miny = p[stl.Dimension.Y]
+            maxy = p[stl.Dimension.Y]
+            minz = p[stl.Dimension.Z]
+            maxz = p[stl.Dimension.Z]
+        else:
+            maxx = max(p[stl.Dimension.X], maxx)
+            minx = min(p[stl.Dimension.X], minx)
+            maxy = max(p[stl.Dimension.Y], maxy)
+            miny = min(p[stl.Dimension.Y], miny)
+            maxz = max(p[stl.Dimension.Z], maxz)
+            minz = min(p[stl.Dimension.Z], minz)
+    return minx, maxx, miny, maxy, minz, maxz

@@ -28,9 +28,9 @@ def DepthSegmentation(obj,axis=Dimension.Z):
         #  - Find slices
         if isFront and isBehind:
             slice.append(facet)
-        # Viewable and non-viewables
-        isViewable = (facet.direction[axis] > 0)
-        if not isViewable:
+        # Visibles and non-visibles
+        isVisible = (facet.direction[axis] > 0)
+        if not isVisible:
             continue
         #  - Find fronts and behinds
         if isFront:
