@@ -6,13 +6,13 @@
 
 다음은 STL 파일로 된 3D 오브젝트를 3D 프린터를 이용하여 출력할 때, 각 레이어 별 도면을 어떻게 생성하는지에 관한 논문이다. 다름이 아니라 참고할 사진자료가 있어 들고왔다.
 
-[##_Image|kage@bK1fw4/btqxdqzB5S7/nh4j0SXUwrD8cNoZBDdWn1/img.png|alignLeft||STUDY ON STL-BASED SLICING PROCESS FOR 3D PRINTING - page 4 [https://sffsymposium.engr.utexas.edu/sites/default/files/2017/Manuscripts/StudyonSTLBasedSlicingProcessfor3DPrinting.pdf_##]
+![첨부](Images/190802/paper.png "STUDY ON STL-BASED SLICING PROCESS FOR 3D PRINTING - page 4 [https://sffsymposium.engr.utexas.edu/sites/default/files/2017/Manuscripts/StudyonSTLBasedSlicingProcessfor3DPrinting.pdf]")
 
 Fig.3 자료를 보면, 어떠한 단면에 대하여 삼각형을 반드시 쪼개야하는 패턴은 (c)와 (e)패턴이다.
 
 우선, 위 패턴들 중 가장 까다로운 (e) 패턴을 어떻게 자를 것인지에 대해 생각을 정리해보았다.
 
-[##_Image|kage@7bb7l/btqxbBVy0nR/lbqQ7ktLPzPKY408SE1u9K/img.png|alignLeft|width="380"|손그림_##]
+![손그림](Images/190802/hand1.png "손그림")
 
 각 facet에는 세 개의 꼭짓점이 있고, 이들의 순서는 각 facet의 normal의 방향에 맞추어 정렬되어있다. (오른손 법칙)
 
@@ -157,11 +157,15 @@ took <처리 소요시간> seconds
 >>> Done.
 ```
 
-[##_Image|kage@b0M3Yt/btqxdQS9hgo/a341qYZyW6Efb1ujOGsx50/img.png|alignLeft||Torus Upward.stl 처리 결과 (svg 이미지)_##][##_Image|kage@bzL8g3/btqxdp2yMPv/RCVX8N4lUAKBWNeiqaMbY0/img.png|alignCenter||Torus Upward 처리 소요시간_##][##_Image|kage@s9y6C/btqxbcQnSiC/ILwkpjbw6w5D62kGUxICI0/img.png|alignCenter||Torus.stl 처리 결과 (svg)_##][##_Image|kage@bNBY07/btqxbd9FjdX/9HMgYjkFdO0kDaIPLFKmv0/img.png|alignCenter||Torus 처리 소요시간_##][##_Image|kage@ZfXKR/btqxf4v8uGn/KKF2ScNQ532q553vk2sQJ1/img.png|alignCenter||토기 예시 데이터/3D 스캔 파일/토기2.stl 처리결과 (svg)_##]
+![캡처](Images/190802/svg_tu.png "Torus Upward.stl 처리 결과 (svg 이미지)")
+![캡처](Images/190802/out_tu.png "Torus Upward 처리 소요시간")
 
+![캡처](Images/190802/svg_t.png "Torus.stl 처리 결과 (svg 이미지)")
+![캡처](Images/190802/out_t.png "Torus 처리 소요시간")
+
+![캡처](Images/190802/svg_cp2.png "토기 예시 데이터/3D 스캔 파일/토기2.stl 처리 결과 (svg 이미지)")
 (아마도 토기2.stl 오브젝트가 회전정렬되지 않은 상태로 입력되어서 위와 같이 출력된 것으로 추정.)
-
-[##_Image|kage@lNhS3/btqxeIUQGTn/tsjkmi4U9leIvCsyLYIRhK/img.png|alignCenter||토기2 처리 소요시간_##]
+![캡처](Images/190802/out_cp2.png "토기2 처리 소요시간")
 
 #### DISCUSSION
 

@@ -8,7 +8,7 @@ STL 포멧으로 저장된 3D 오브젝트로 부터 입단면도를 생성하�
 
 ### 1\. Facet 
 
-[##_Image|kage@cNhyps/btqwYhXp1rQ/OeIjmCkI02rtSvT1vN91K1/img.gif|alignLeft||https://www.fabbers.com/tech/STL_Format_##]
+![첨부](Images/190718/facet.gif "https://www.fabbers.com/tech/STL_Format")
 
 STL 파일은 여러개의 삼각형(Facet)이 모여 3D 물체의 표면을 이룬다.
 
@@ -16,7 +16,7 @@ STL 파일은 여러개의 삼각형(Facet)이 모여 3D 물체의 표면을 이
 
 ASCII로 저장된 STL파일의 형식은 다음과 같다.
 
-[##_Image|kage@cRUx5D/btqwYiaZkMq/ksNiWAKL1bkVqZPVO1ovH0/img.gif|alignLeft||https://www.fabbers.com/tech/STL_Format _##]
+![첨부](Images/190718/format.gif "https://www.fabbers.com/tech/STL_Format")
 
 각 Facet에는 normal(방향벡터)와, 세 꼭짓점의 좌표들이 기록되어 있다.
 
@@ -72,11 +72,11 @@ SLICE     (단면) : isFront && isBehind
 
 1\. 우선 Facet의 각 Edge중 단면 기준선에 접하는 (z=0을 만족) 부분에 vertext를 생성한다.
 
-[##_Image|kage@3ISOJ/btqwXegG00F/YG3k1yT62J3PzF1ZqwVp8K/img.jpg|alignLeft|height="107" data-filename="KakaoTalk_Photo_2019-07-23-19-48-21.jpeg" width="402"|assign vertices on the edges intersected by slice-surface._##]
+![손그림](./Images/190718/hand1.jpeg "assign vertices on the edges intersected by slice-surface.")
 
 2\. 새로 생성된 두 개의 vertices와 함께 사다리꼴을 이루는 Facet 위의 두 vertices로 부터 마주보는 한 쌍의 점들을 이어 3개의 작은 Facet으로 분할한다. 세 개의 Facet은 모두 동일한 normal을 갖는다.
 
-[##_Image|kage@uR0kb/btqwZYDuo4B/5p1XOZVGhEnzn6OfsSWxZ0/img.jpg|alignLeft|height="144" data-filename="KakaoTalk_Photo_2019-07-23-19-48-34.jpeg" width="402"|Seperate a facet into 3 smaller facets.&nbsp;_##]
+![손그림](./Images/190718/hand2.jpeg "Seperate a facet into 3 smaller facets.")
 
 위와 같이 처리하였을 경우, 단면에 걸쳐진 Facet들에서 단면에 접하는 모서리만을 모아 벡터그래픽 (SVG) 형태로 도면을 직접적으로 추출할 수 있게 된다.
 
