@@ -2,29 +2,21 @@ from stl import mesh
 import stl
 import numpy as np
 
-import time
-
 def DepthSegmentation(obj):
     """깊이 기반 분리 : <input> -> breakage -> cutting -> <output>"""
     assert isinstance(obj,mesh.Mesh)
 
-    print('D-Segmentation start.')
-    start = time.time()
-
     breakage = _breakage(obj)
     cutting  = _cutting(breakage)
 
-    end = time.time()
-    print('D-Segmentation done.')
-    print('total %d'%obj.__len__())
-    print('took %f seconds'%(end-start))
     return np.array(cutting)
 
 def _breakage(obj):
     """메쉬를 전면, 배면, 단면으로 분류. 각 영역은 중복되지 않음."""
     z = obj.z
     n = obj.normals
-    ret = [ [], [], [] ]
+    front,section_breakage,rear = [],[],[]
+
     for i in range(obj.__len__()):
         # Front or behind the xy-surface
         isFront = isRear = False
@@ -33,14 +25,14 @@ def _breakage(obj):
             isRear  |= (_z <= 0)
         #  - Find slices
         if isFront and isRear:
-            ret[1].append(obj.data[i])
+            section_breakage.append(obj.data[i])
         #  - Find fronts and behinds
         elif n[i,2] > 0:
             if isFront:
-                ret[0].append(obj.data[i])
+                front.append(obj.data[i])
             if isRear:
-                ret[2].append(obj.data[i])
-    return ret
+                rear.append(obj.data[i])
+    return front,section_breakage,rear
 
 def _cutting(breakage):
     """breakage 과정에서 section으로 분류된 facet의 후처리.
@@ -61,6 +53,7 @@ def _cutting(breakage):
 
     new_data = new_vectors = None
     i = j = k = A = B = C = z = None
+
     for normal,vectors,attr in section_breakage:
         z = vectors[:, 2]
 
@@ -103,5 +96,4 @@ def _cutting(breakage):
                     front.append(new_data[i])
                 else:
                     rear.append(new_data[i])
-
     return front, section_cutting, rear
