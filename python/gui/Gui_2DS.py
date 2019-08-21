@@ -6,6 +6,7 @@ import cv2
 
 def __main__():
     print('2ds')
+    
     global window
     global WIN_WIDTH, WIN_HEIGHT
     global IMAGE_WIDTH
