@@ -77,7 +77,7 @@ def _cutting(breakage):
                 # Meaningless to append a dot.
                 continue
 
-            section_cutting.append((B[:2],C[:2]))
+            section_cutting.append((B[0],B[1],C[0],C[1]))
 
             new_vectors = np.array([ # Create new reference : no need to .copy()
                 [ vectors[i], vectors[j], B         ],

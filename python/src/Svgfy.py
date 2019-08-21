@@ -1,13 +1,13 @@
 import numpy as np
 
 # SVG Config.
-WIDTH = HEIGHT = 4096
-MULT = 10
-TRAN = 800
-THIC = 0
-COLO = 0xFFFFFF
+WIDTH = HEIGHT = 4096 # SVG 이미지 크기
+MULT = 6 # SVG 출력 배율 (확대)
+TRAN = 360 # SVG 출력 원점이동 (가로,세로 동일)
+THIC = .25 # 출력할 선의 두께
+COLO = 0x0 # 출력할 선의 색상
 
-COLOR_MAX = 0xFF # Gradient method, max color
+COLOR_MAX = 0xFFFFFF # Gradient method, max color
 
 VERSION = 'xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"'
 STYLES   = [
@@ -35,7 +35,7 @@ def build_surface(surface):
     svg = ''
     svg += create_header()
     svg += create_style()
-    svg += create_polygons(surface)
+    svg += create_polygons(surface, 'gradient')
     svg += create_footer()
     return svg
 
@@ -54,8 +54,8 @@ def create_style():
     return svg
 
 def create_line(line):
-    A,B = np.add(np.dot(line,MULT),TRAN)
-    return '<polyline points="%f,%f %f,%f"/>'%(A[0],A[1],B[0],B[1])
+    Ax,Ay,Bx,By = np.add(np.dot(line,MULT),TRAN)
+    return '<polyline points="%f,%f %f,%f"/>'%(Ax,Ay,Bx,By)
 
 def create_lines(lines):
     svg = ''
@@ -133,7 +133,7 @@ def use_gradient(data,id, color_bandwidth, color_lowest):
         # return '', create_line(line)
         return '', ''
     # 이하 자세한 건 연구노트 참고.
-    A_alt,B_alt,C_alt = _grad_by_normal(data)
+    A_alt,B_alt,C_alt = _grad_by_differential(data)
     x1 = (A_alt[0] - minx) / width
     y1 = (A_alt[1] - miny) / height
     x2 = (C_alt[0] - minx) / width
@@ -181,74 +181,3 @@ def _sort(vectors):
 
 
 
-def create_facet_with_dots(data, color_bandwidth, color_lowest, id=-1):
-    gradient, polygon = create_facet(data, color_bandwidth, color_lowest, id=id)
-    # create_facet과 decide_Gradient_vector가 공통으로 쓰는 값들
-    normal,vectors,attr = data
-
-    # A,B,C = [vectors[order] for order in np.argsort(vectors[:,2])]
-    A,B,C = _sort(vectors)
-
-    maxx,minx,maxy,miny,maxz,minz = _bounding_box(vectors)
-    width  = maxx - minx
-    height = maxy - miny
-
-    if width * height == 0:
-        # line = (A[:2], B[:2])
-        # return '', create_line(line)
-        return '', ''
-
-    # 이하 자세한 건 연구노트 참고.
-    b = np.subtract(B,A) # distance between points B and A.
-    c = np.subtract(C,A)
-    #
-    m = (b[0]*c[2] - b[2]*c[0]) / (b[2]*c[1] - b[1]*c[2])
-    m2 = m*m
-    C_altx = (m2*A[0] + C[0] + m*c[1]) / (m2 + 1)  # C'x
-    C_alty = m * C_altx
-    B_altx = (m2*A[0] + B[0] + m*b[1]) / (m2 + 1)  # B'x
-    B_alty = m * B_altx
-    #
-    x1 = (A[0] - minx) / width
-    y1 = (A[1] - miny) / height
-    x2 = (C_altx - minx) / width
-    y2 = (m*C_altx - miny) / height # C'y == m * C'x
-
-    # OPTIONAL
-    s2r = (B_altx - A[0]) / (C_altx - A[0]) # stop-point2 ratio
-
-    sc1 = int( (A[2] - color_lowest) / color_bandwidth * 0xFFFFFF )
-    sc2 = int( (B[2] - color_lowest) / color_bandwidth * 0xFFFFFF )
-    sc3 = int( (C[2] - color_lowest) / color_bandwidth * 0xFFFFFF )
-    
-    print('box', [x1,y1,x2,y2])
-    print('alts', [B_altx, C_altx])
-    print('s2r', s2r)
-    print('sc', [sc1,sc2,sc3])
-
-    A,B,C = np.add(np.dot([A,B,C], MULT), TRAN)
-
-    B_alty, C_alty = np.add(np.dot([m*B_altx,m*C_altx], MULT), TRAN)
-    B_altx, C_altx = np.add(np.dot([B_altx,C_altx], MULT), TRAN)
-
-    gradient = """
-    <linearGradient id="g%d" x1="%f" y1="%f" x2="%f" y2="%f">
-        <stop offset="0" stop-color="#%06x"/>
-        <stop offset="%f" stop-color="#%06x"/>
-        <stop offset="1" stop-color="#%06x"/>
-    </linearGradient>
-    """ % (id, x1,y1,x2,y2, sc1,s2r,sc2,sc3)
-    polygon = """
-    <polygon fill="url(#g%d)" points="%f,%f %f,%f %f,%f"/>
-    """ % (id, A[0],A[1], B[0],B[1], C[0],C[1])
-
-    dot = ''
-    if id == 100:
-        dot = """
-        <circle a="" cx="%f" cy="%f" r="1"/>
-        <circle b_alt="" cx="%f" cy="%f" r="1"/>
-        <circle c_alt="" cx="%f" cy="%f" r="1"/>
-        """ % (A[0],A[1], B_altx,B_alty, C_altx,C_alty)
-    else:
-        dot = ''
-    return gradient, polygon, dot
