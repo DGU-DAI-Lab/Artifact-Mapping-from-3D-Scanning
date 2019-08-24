@@ -7,6 +7,32 @@ from src import Svgfy as svg
 from stl import mesh
 import time
 
+
+def set_root(window):
+    global root
+    root = window
+
+def Rotate_UseCogCov():
+    pass
+
+def Rotate_Direct():
+    pass
+
+def Mapping_SVG_noBackground():
+    pass
+
+def Mapping_SVG_plainBackground():
+    pass
+
+def Mapping_SVG_LinearGradientByNormal():
+    pass
+
+def Mapping_SVG_LinearGradientByRatio():
+    pass
+
+def Mapping_WindowDetect():
+    pass
+
 def main(fname):
     root = tk.Tk()
     print('3ds')
