@@ -40,9 +40,9 @@ def main():
     # - 2D Mapping
     menu_2D_Mapping_DS.add_command(label="... 사분면 분할식 영역 특성 기반 윤곽선검출 [HJ]", command=ds2_gui.Mapping_DS_QuadrantDivision)
     menu_2D_Mapping_DS.add_command(label="... 폐곡선 Contour 검색식 자동 투창 선택형 [DJ]", command=ds2_gui.Mapping_DS_ClosedWindowAutoDetection)
-    menu_2D_Mapping_DS.add_command(label="... 투창 영역 선택형 [HJ]", command=ds2_gui.Mapping_DS_LocalBoxSelect)
+    menu_2D_Mapping_DS.add_command(label="... (미구현) 사각형의 투창 영역 직접 선택형 [HJ]", command=ds2_gui.Mapping_DS_LocalBoxSelect)
 
-    menu_2D_Mapping.add_command(label="Contour only. (첫 컨투어 검출 방법)", command=ds2_gui.Mapping_DirectContour)
+    menu_2D_Mapping.add_command(label="Edge Contour (Canny만 이용)", command=ds2_gui.Mapping_DirectContour)
     menu_2D_Mapping.add_cascade(label="2D-Segment [DJ] + ...", menu=menu_2D_Mapping_DS)
 
     # - 3D Rotate
@@ -69,7 +69,7 @@ def main():
     menu_3D_Mapping.add_cascade(label="3D-Segment & SVGfy [DJ]", menu=menu_3D_Mapping_SVG)
     menu_3D.add_cascade(label="Rotate",  menu=menu_3D_Rotate)
     menu_3D.add_cascade(label="Mapping", menu=menu_3D_Mapping)
-    menubar.add_cascade(label="3D Objects", menu=menu_3D)
+    menubar.add_cascade(label="(미구현) 3D Objects", menu=menu_3D)
 
     root.config(menu=menubar)
     root.mainloop()
