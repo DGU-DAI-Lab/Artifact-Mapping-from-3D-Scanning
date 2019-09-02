@@ -24,7 +24,6 @@ def main():
     menu_2D = Menu(menubar)
     menu_2D_Rotate  = Menu(menu_2D)
     menu_2D_Mapping = Menu(menu_2D)
-    menu_2D_Mapping_DS = Menu(menu_2D_Mapping)
 
     menu_3D = Menu(menubar)
     menu_3D_Rotate = Menu(menu_3D)
@@ -38,12 +37,10 @@ def main():
     menu_2D_Rotate.add_command(label="Direct", command=ds2_gui.Rotate_Direct)
 
     # - 2D Mapping
-    menu_2D_Mapping_DS.add_command(label="... 사분면 분할식 영역 특성 기반 윤곽선검출 [HJ]", command=ds2_gui.Mapping_DS_QuadrantDivision)
-    menu_2D_Mapping_DS.add_command(label="... 폐곡선 Contour 검색식 자동 투창 선택형 [DJ]", command=ds2_gui.Mapping_DS_ClosedWindowAutoDetection)
-    menu_2D_Mapping_DS.add_command(label="... (미구현) 사각형의 투창 영역 직접 선택형 [HJ]", command=ds2_gui.Mapping_DS_LocalBoxSelect)
-
     menu_2D_Mapping.add_command(label="Edge Contour (Canny만 이용)", command=ds2_gui.Mapping_DirectContour)
-    menu_2D_Mapping.add_cascade(label="2D-Segment [DJ] + ...", menu=menu_2D_Mapping_DS)
+    menu_2D_Mapping.add_command(label="사분면 분할식 영역 특성 기반 윤곽선검출 [HJ]", command=ds2_gui.Mapping_DS_QuadrantDivision)
+    menu_2D_Mapping.add_command(label="2D-Segment & 폐곡선 Contour 검색식 자동 투창 선택형 [DJ]", command=ds2_gui.Mapping_DS_ClosedWindowAutoDetection)
+    menu_2D_Mapping.add_command(label="(미구현) 사각형의 투창 영역 직접 선택형 [HJ]", command=ds2_gui.Mapping_DS_LocalBoxSelect)
 
     # - 3D Rotate
     menu_3D_Rotate.add_command(label="Use Vector : COG - COV [DJ]", command=ds3_gui.Rotate_UseCogCov)
@@ -70,6 +67,9 @@ def main():
     menu_3D.add_cascade(label="Rotate",  menu=menu_3D_Rotate)
     menu_3D.add_cascade(label="Mapping", menu=menu_3D_Mapping)
     menubar.add_cascade(label="(미구현) 3D Objects", menu=menu_3D)
+
+    # DEBUG
+    ds2_gui.Mapping_DS_ClosedWindowAutoDetection()
 
     root.config(menu=menubar)
     root.mainloop()

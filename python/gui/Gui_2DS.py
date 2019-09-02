@@ -2,6 +2,7 @@ from tkinter import filedialog as fd
 import numpy as np
 import cv2
 
+COLOR_WHITE = (0xFF, 0xFF, 0xFF)
 COLOR_PRIMARY = (0xFF, 0x00, 0xFF)
 COLOR_SECONDARY = (0x00, 0xFF, 0xFF)
 
@@ -11,7 +12,7 @@ root = None # for tkinter
 
 def Rotate_byBoundingBox():
     winname = 'B. Box'
-    varname_mode, default_mode, max_mode = 'on/off', 0, 1
+    varname_mode, default_mode, max_mode = 'on/off', 1, 1
     manual_width = 640
     
     onProcStart()
@@ -43,7 +44,7 @@ def Rotate_byBoundingBox():
 
 def Rotate_byHoughTransform():
     winname = 'H. Trans.'
-    varname_lineNum, default_lineNum = 'line num.', 0
+    varname_lineNum, default_lineNum, max_lineNum = 'line num.', None, None
     manual_width = 640
     
     onProcStart()
@@ -52,7 +53,7 @@ def Rotate_byHoughTransform():
     size,center = get_size_n_center(img.shape)
 
     canny = cv2.Canny(gray, 250, 255)
-    lines = cv2.HoughLines(canny, 1, np.pi/180/4, 100)
+    lines = cv2.HoughLines(canny, 1, np.pi/180, 100)
 
     def drawLine(img, line):
         rho,theta = line[0]
@@ -64,7 +65,7 @@ def Rotate_byHoughTransform():
         y1 = int(y0 +1000*(a))
         x2 = int(x0 -1000*(-b))
         y2 = int(y0 -1000*(a))
-        return cv2.line(img,(x1,y1),(x2,y2),COLOR_PRIMARY,1)
+        return cv2.line(img,(x1,y1),(x2,y2),COLOR_WHITE,1)
 
     def update(lineNum):
         pallete = img.copy()
@@ -82,9 +83,11 @@ def Rotate_byHoughTransform():
             rmat = cv2.getRotationMatrix2D(center, degree, 1)
             output = cv2.warpAffine(pallete, rmat, size)
             cv2.imshow(winname, output)
+    
+    default_lineNum = max_lineNum = len(lines)
 
     cv2.namedWindow(winname)
-    cv2.createTrackbar(varname_lineNum, winname, default_lineNum, len(lines), update)
+    cv2.createTrackbar(varname_lineNum, winname, default_lineNum, max_lineNum, update)
     update(default_lineNum)
 
 def Rotate_Direct():
@@ -160,128 +163,176 @@ def Mapping_DS_QuadrantDivision():
 def Mapping_DS_ClosedWindowAutoDetection():
     winname = 'Windows Auto Detection'
 
-    varname_prog, default_prog, max_prog = 'view mode', 3, 3
-    varname_winproc, default_winproc, max_winproc = 'window process level', 1, 4
-    varname_bodyproc, default_bodyproc, max_bodyproc = 'body process level', 1, 1
-    varname_part, default_part, max_part = 'show part (front/rear)', 0, 1
-    manual_width = 640
+    varname_part, default_part, max_part = 'show part (front/rear/all)', 2, 2
+    varname_mode, default_mode, max_mode = 'view mode (raw/no bg/partial/final)', 2, 3
+    varname_winproc, default_winproc, max_winproc = '(partial) window process level', 4, 4
+    varname_bodyproc, default_bodyproc, max_bodyproc = '(partial) body process level', 1, 1
+    varname_mdilate, default_mdilate, max_mdilate = '(partial) mask dilation', 32, 255
+    manual_width = 480
 
-    MASK_EXPAND = 32
-    WINDOW_CANNY_THRESH = (250,255)
+    WINDOW_CANNY_THRESH = (230,255)
+
+    BODY_COLOR = COLOR_PRIMARY
+    WINDOW_COLOR = COLOR_SECONDARY
     
     onProcStart()
     
-    path = open_dir()
+    path = '../test_model/2ds-preproc/토기2/' #open_dir()
+
     # Preproc 2D-Segment.
     dseg = [get_img(path=path+'/outer.png',width=manual_width),
             get_img(path=path+'/inner.png',width=manual_width)]
 
-    def removeBG(x):
+    def remove_background(x):
         _,th = cv2.threshold(x, 250,255, cv2.THRESH_BINARY_INV)
         return cv2.morphologyEx(th, cv2.MORPH_CLOSE,(5,5), iterations=3)
 
-    def sort(part_binary):
+    def sort_contours(part_binary):
         contours,hierarchy = cv2.findContours(part_binary, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
         bodies = []
         windows = []
         for i in range(len(contours)):
             cont, hier = contours[i], hierarchy[0,i]
-            pallete = np.zeros(part.shape[0:2], np.uint8)
-            cv2.drawContours(pallete, [cont], 0, 255, -1) # Fill
             if (hier[3] < 0): # isBody?
-                bodies.append(pallete)
+                bodies.append(cont)
             else:
-                windows.append(pallete)
+                windows.append(cont)
         return bodies, windows
 
-    def apply_mask(img,mask,expand):
+    def draw_contours(raw, contours, color):
+        canvas = np.zeros(raw.shape[0:2], dtype=np.uint8)
+        canvas = cv2.drawContours(canvas, contours, -1, 255, 1) # Fill
+        c_canvas = cv2.cvtColor(canvas, cv2.COLOR_GRAY2BGR)
+        c_canvas[np.where((canvas != 0))] = color
+        return c_canvas
+
+    def draw_masks(raw, contours):
+        canvas = np.zeros(raw.shape[0:2], dtype=np.uint8)
+        canvas = cv2.drawContours(canvas, contours, -1, 255, -1) # Fill
+        return canvas
+
+    def apply_mask(raw,mask,expand):
         ksize = 2*expand +1
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(ksize,ksize))
         dilated = cv2.dilate(mask,kernel)
-        return cv2.bitwise_and(img,img,mask=dilated) #???
+        return cv2.bitwise_and(raw,raw,mask=dilated) #???
 
-    def proc_window(part,windows):
-        pallete = np.zeros(part.shape, np.uint8)
-        for roi in windows:
-            overfit = apply_mask(part,roi,MASK_EXPAND+1)
-            canny = cv2.Canny(overfit,WINDOW_CANNY_THRESH[0],WINDOW_CANNY_THRESH[1],apertureSize=3)
-            fit = apply_mask(canny,roi,MASK_EXPAND)
-            fit = cv2.cvtColor(fit,cv2.COLOR_GRAY2BGR)
-            pallete = cv2.add(pallete,fit)
-        return pallete
+    def proc_window(raw, window_contours, mask_expand, thresh=WINDOW_CANNY_THRESH):
+        pallete = np.zeros(raw.shape, np.uint8)
+        for roi in window_contours:
+            mask = draw_masks(raw, [roi])
+            masked_overfit = apply_mask(raw,mask,mask_expand+1)
+            canny = cv2.Canny(masked_overfit, thresh[0],thresh[1], apertureSize=3)
+            masked_fit = apply_mask(canny,mask,mask_expand)
+
+            output = cv2.cvtColor(masked_fit, cv2.COLOR_GRAY2BGR)
+            output[np.where((output!=[0,0,0]).all(axis=2))] = WINDOW_COLOR
+            pallete = cv2.add(pallete,output)
+        return pallete # 3-channel
     
-    def proc_body(part,bodies):
-        pallete = np.zeros(part.shape, np.uint8)
-        for body in bodies:
-            contours,_ = cv2.findContours(body,cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-            cv2.drawContours(pallete,contours,-1,COLOR_PRIMARY,1)
+    def proc_body(raw, body_contours):
+        pallete = np.zeros(raw.shape, np.uint8)
+        cv2.drawContours(pallete,body_contours,-1,BODY_COLOR,1)
         return pallete
-
-    results = []
-    for part in dseg:
-        gray = cv2.cvtColor(part,cv2.COLOR_BGR2GRAY)
-        no_bg = removeBG(gray)
-        bodies,windows = sort(no_bg)
-        body_proced = proc_body(part,bodies)
-        window_proced = proc_window(part,windows)
-        results.append({
-            'raw' : part,
-            'no_bg' : no_bg,
-            'body' : bodies,
-            'window' : windows,
-            'body_proc' : body_proced,
-            'window_proc' : window_proced,
-            'output' : cv2.add(body_proced, window_proced)
-        })
 
     def update(x):
         part = cv2.getTrackbarPos(varname_part, winname)
-        progress = cv2.getTrackbarPos(varname_prog, winname)
+        progress = cv2.getTrackbarPos(varname_mode, winname)
         winproc = cv2.getTrackbarPos(varname_winproc, winname)
         bodyproc = cv2.getTrackbarPos(varname_bodyproc, winname)
+        mdilate = cv2.getTrackbarPos(varname_mdilate, winname)
 
-        res = results[part]
-        if progress is 0: # show original image
-            cv2.imshow(winname, res['raw'])
+        def process(part):
+            raw = dseg[part]
+            gray = cv2.cvtColor(raw,cv2.COLOR_BGR2GRAY)
+            no_bg = remove_background(gray)
+            b_cont, w_cont = sort_contours(no_bg)
+            b_draw, w_draw = [draw_contours(raw,cont,color) for cont, color in [(b_cont,BODY_COLOR), (w_cont,WINDOW_COLOR)]]
+            b_mask, w_mask = [draw_masks(raw, c) for c in [b_cont, w_cont]]
+            b_maskexp, w_maskexp = [apply_mask(raw,m,mdilate) for m in [b_mask, w_mask]]
+            b_proc, w_proc = [proc_body(raw,b_cont), proc_window(raw,w_cont,mdilate)]
+            return {
+                'raw'   : raw,
+                'gray'  : gray,
+                'no_bg' : no_bg,
+                'contours' : {
+                    'body'   : b_cont,
+                    'window' : w_cont
+                },
+                'contours-drawn' : {
+                    'body' : b_draw, # equal as b_proc
+                    'window' : w_draw
+                },
+                'masks' : {
+                    'body'   : cv2.cvtColor(b_mask,cv2.COLOR_GRAY2BGR),
+                    'window' : cv2.cvtColor(w_mask,cv2.COLOR_GRAY2BGR)
+                },
+                'masks-expanded' : {
+                    'body'   : b_maskexp,
+                    'window' : w_maskexp
+                },
+                'proc' : {
+                    'body'   : b_proc,
+                    'window' : w_proc
+                },
+                'output' : cv2.add(b_proc, w_proc)
+            }
 
-        elif progress is 1: # show no-background area
-            cv2.imshow(winname, res['no_bg'])
+        def prepare(part):
+            res = process(part)
+            pallete = None
+            if progress is 0: # MODE_0 show original image
+                pallete = res['raw']
 
-        elif progress is 2: # show detailed process
-            pallete = np.zeros(res['raw'].shape, dtype=np.uint8)
-            if bodyproc is 1: # show body processed
-                pallete = cv2.add(pallete, res['body_proc'])
+            elif progress is 1: # MODE_1 show no-background area
+                pallete = res['no_bg']
 
-            if winproc is 1: # show window contours
-                cont,hier = cv2.findContours(res['no_bg'], cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-                for i in range(len(cont)):
-                    if hier[0,i,3] < 0: # is body?
-                        continue
-                    cv2.drawContours(pallete, [cont[i]], 0, COLOR_SECONDARY, 1)
-                    
-            elif winproc is 2: # show mask
-                for roi in res['window']:
-                    mask = apply_mask(res['raw'],roi,0)
-                    pallete = cv2.add(pallete, mask)
-                    
-            elif winproc is 3: # show expanded mask
-                for roi in res['window']:
-                    mask = apply_mask(res['raw'],roi,MASK_EXPAND)
-                    pallete = cv2.add(pallete, mask)
-                    
-            elif winproc is 4: # show window processed
-                pallete = cv2.add(pallete, res['window_proc'])
+            elif progress is 2: # MODE_2 show detailed process
+                pallete = np.zeros(res['raw'].shape, dtype=np.uint8)
+                if bodyproc is 1: # show body processed
+                    pallete = cv2.add(pallete, res['proc']['body'])
 
-            cv2.imshow(winname, pallete)
+                if winproc is 1: # show window contours
+                    pallete = cv2.add(pallete, res['contours-drawn']['window'])
+                        
+                elif winproc is 2: # show mask
+                    pallete = cv2.add(pallete, res['masks']['window'])
+                        
+                elif winproc is 3: # show expanded mask
+                    pallete = cv2.add(pallete, res['masks-expanded']['window'])
+                        
+                elif winproc is 4: # show window processed
+                    pallete = cv2.add(pallete, res['proc']['window'])
     
-        else: # show full contour
-            cv2.imshow(winname, res['output'])
+            else: # MODE_3 show full contour
+                pallete = res['output']
 
+            return pallete.copy()
+
+        if part is 2: # Show all
+            p = [prepare(0), prepare(1)]
+            pallete = None
+            h0,w0 = p[0].shape[0], p[0].shape[1]
+            h1,w1 = p[1].shape[0], p[1].shape[1]
+            try:
+                pallete = np.zeros((max(h0,h1),max(w0,w1),p[0].shape[2]),dtype=np.uint8)
+                pallete[0:h0,0:w0,:] = cv2.add(pallete[0:h0,0:w0,:], p[0])
+                pallete[0:h1,0:w1,:] = cv2.addWeighted(pallete[0:h1,0:w1,:], .5, p[1], .5, 0)
+            except IndexError as err:
+                pallete = np.zeros((max(h0,h1),max(w0,w1)),dtype=np.uint8)
+                pallete[0:h0,0:w0] = cv2.add(pallete[0:h0,0:w0], p[0])
+                pallete[0:h1,0:w1] = cv2.addWeighted(pallete[0:h1,0:w1], .5, p[1], .5, 0)
+            finally:
+                cv2.imshow(winname, pallete)
+        else:
+            cv2.imshow(winname, prepare(part))
+    
     cv2.namedWindow(winname)
     cv2.createTrackbar(varname_part, winname, default_part, max_part, update)
-    cv2.createTrackbar(varname_prog, winname, default_prog, max_prog, update)
+    cv2.createTrackbar(varname_mode, winname, default_mode, max_mode, update)
     cv2.createTrackbar(varname_winproc, winname, default_winproc, max_winproc, update)
     cv2.createTrackbar(varname_bodyproc, winname, default_bodyproc, max_bodyproc, update)
+    cv2.createTrackbar(varname_mdilate, winname, default_mdilate, max_mdilate, update)
     update(None)
         
 
@@ -290,9 +341,8 @@ def Mapping_DS_LocalBoxSelect():
 
 def Mapping_DirectContour():
     winname = 'Canny Contour'
-    varname_th1, default_th1 = 'threshold1', 250
-    varname_th2, default_th2 = 'threshold2', 255
-    max_th = 255
+    varname_th1, default_th1, max_th1 = 'threshold1', 250, 255
+    varname_th2, default_th2, max_th1 = 'threshold2', 255, 255
     manual_width = 640
     
     onProcStart()
@@ -336,7 +386,7 @@ def open_dir():
     return file_dir
 
 def readUnicodePath(path):
-    print('opeing', path)
+    print('opening', path)
     stream = open(path,"rb")
     bytes = bytearray(stream.read())
     numpyArray = np.asarray(bytes,dtype=np.uint8)
