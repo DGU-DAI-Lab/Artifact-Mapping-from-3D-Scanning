@@ -16,6 +16,7 @@ from gui import Gui_2DS as ds2_gui
 from gui import Gui_3DS as ds3_gui
 
 def main():
+
     root = tk.Tk()
 
     # Defines
@@ -68,7 +69,7 @@ def main():
     menu_3D.add_cascade(label="Mapping", menu=menu_3D_Mapping)
     menubar.add_cascade(label="(미구현) 3D Objects", menu=menu_3D)
 
-    # DEBUG
+
     ds2_gui.Mapping_DS_ClosedWindowAutoDetection()
 
     root.config(menu=menubar)

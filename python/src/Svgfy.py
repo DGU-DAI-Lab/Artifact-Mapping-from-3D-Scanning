@@ -1,10 +1,10 @@
 import numpy as np
 
 # SVG Config.
-WIDTH = HEIGHT = 4096 # SVG 이미지 크기
+WIDTH = HEIGHT = 8196 # SVG 이미지 크기
 MULT = 6 # SVG 출력 배율 (확대)
-TRAN = 360 # SVG 출력 원점이동 (가로,세로 동일)
-THIC = .25 # 출력할 선의 두께
+TRAN = 640 # SVG 출력 원점이동 (가로,세로 동일)
+THIC = 2 # 출력할 선의 두께
 COLO = 0x0 # 출력할 선의 색상
 
 COLOR_MAX = 0xFFFFFF # Gradient method, max color

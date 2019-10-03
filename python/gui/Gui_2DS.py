@@ -2,8 +2,11 @@ from tkinter import filedialog as fd
 import numpy as np
 import cv2
 
+import matplotlib.pyplot as plt
+
+THICKNESS = 2
 COLOR_WHITE = (0xFF, 0xFF, 0xFF)
-COLOR_PRIMARY = (0xFF, 0x00, 0xFF)
+COLOR_PRIMARY = (0xFF, 0xFF, 0x00)
 COLOR_SECONDARY = (0x00, 0xFF, 0xFF)
 
 ############################################################
@@ -25,7 +28,7 @@ def Rotate_byBoundingBox():
     rect = cv2.minAreaRect(contour[0])
     # Draw box (not necessary)
     box = np.int0(cv2.boxPoints(rect))
-    img = cv2.drawContours(img,[box],-1,COLOR_PRIMARY)
+    img = cv2.drawContours(img,[box],-1,COLOR_PRIMARY,thickness=THICKNESS)
     # Calc rotation matrix
     _,_,degree = rect
     rmat = cv2.getRotationMatrix2D(center, degree, 1)
@@ -146,7 +149,7 @@ def Mapping_DS_QuadrantDivision():
         for i in [0,1,2,3]:
             #cv2.threshold(cut[i], 127, 255, cv2.THRESH_BINARY)
             contours, _ = results[i]
-            cv2.drawContours(cut[i],contours,-1,COLOR_PRIMARY,1)\
+            cv2.drawContours(cut[i],contours,-1,COLOR_PRIMARY,1,thickness=THICKNESS)
 
         if toggle is 1:
             cv2.line(pallete,(cut_x,0),(cut_x,size[1]),COLOR_SECONDARY,1)
@@ -170,14 +173,14 @@ def Mapping_DS_ClosedWindowAutoDetection():
     varname_mdilate, default_mdilate, max_mdilate = '(partial) mask dilation', 32, 255
     manual_width = 480
 
-    WINDOW_CANNY_THRESH = (230,255)
+    WINDOW_CANNY_THRESH = (78,188)
 
     BODY_COLOR = COLOR_PRIMARY
     WINDOW_COLOR = COLOR_SECONDARY
     
     onProcStart()
     
-    path = '../test_model/2ds-preproc/토기2/' #open_dir()
+    path = '../test_model/2ds-preproc/토기2' # open_dir()
 
     # Preproc 2D-Segment.
     dseg = [get_img(path=path+'/outer.png',width=manual_width),
@@ -201,7 +204,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
 
     def draw_contours(raw, contours, color):
         canvas = np.zeros(raw.shape[0:2], dtype=np.uint8)
-        canvas = cv2.drawContours(canvas, contours, -1, 255, 1) # Fill
+        canvas = cv2.drawContours(canvas, contours, -1, 255,thickness=THICKNESS)
         c_canvas = cv2.cvtColor(canvas, cv2.COLOR_GRAY2BGR)
         c_canvas[np.where((canvas != 0))] = color
         return c_canvas
@@ -219,11 +222,34 @@ def Mapping_DS_ClosedWindowAutoDetection():
 
     def proc_window(raw, window_contours, mask_expand, thresh=WINDOW_CANNY_THRESH):
         pallete = np.zeros(raw.shape, np.uint8)
-        for roi in window_contours:
+        path = '../output/2ds/auto_window_detection/processed_windows/'
+        for i in range(len(window_contours)):
+            roi = window_contours[i]
             mask = draw_masks(raw, [roi])
+            cv2.imwrite(path+'window_mask_%d.png'%i, mask)
+
             masked_overfit = apply_mask(raw,mask,mask_expand+1)
+            cv2.imwrite(path+'window_masked_%d.png'%i, masked_overfit)
+
+            ####
+
+            gray_window = cv2.cvtColor(masked_overfit, cv2.COLOR_BGR2GRAY)
+            hist = [0]*256
+            for j in range(gray_window.size):
+                val = gray_window.item(j)
+                hist[val] += 1
+
+            plt.hist2d(range(254), hist[1:255], bins=254)
+            plt.xlabel('pixel value')
+            plt.ylabel('frequency')
+            plt.savefig(path+'window_%d_graphed.png'%i)
+            plt.close()
+
+            ####
+
             canny = cv2.Canny(masked_overfit, thresh[0],thresh[1], apertureSize=3)
             masked_fit = apply_mask(canny,mask,mask_expand)
+            cv2.imwrite(path+'window_masked_canny_%d.png'%i, masked_fit)
 
             output = cv2.cvtColor(masked_fit, cv2.COLOR_GRAY2BGR)
             output[np.where((output!=[0,0,0]).all(axis=2))] = WINDOW_COLOR
@@ -232,7 +258,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
     
     def proc_body(raw, body_contours):
         pallete = np.zeros(raw.shape, np.uint8)
-        cv2.drawContours(pallete,body_contours,-1,BODY_COLOR,1)
+        cv2.drawContours(pallete,body_contours,-1,BODY_COLOR,thickness=THICKNESS)
         return pallete
 
     def update(x):
@@ -324,8 +350,11 @@ def Mapping_DS_ClosedWindowAutoDetection():
                 pallete[0:h1,0:w1] = cv2.addWeighted(pallete[0:h1,0:w1], .5, p[1], .5, 0)
             finally:
                 cv2.imshow(winname, pallete)
+                cv2.imwrite('../output/temp.png', pallete)
         else:
-            cv2.imshow(winname, prepare(part))
+            output = negativeColor(prepare(part))
+            cv2.imshow(winname, output)
+            cv2.imwrite('../output/2ds/all.png', output)
     
     cv2.namedWindow(winname)
     cv2.createTrackbar(varname_part, winname, default_part, max_part, update)
@@ -342,7 +371,7 @@ def Mapping_DS_LocalBoxSelect():
 def Mapping_DirectContour():
     winname = 'Canny Contour'
     varname_th1, default_th1, max_th1 = 'threshold1', 250, 255
-    varname_th2, default_th2, max_th1 = 'threshold2', 255, 255
+    varname_th2, default_th2, max_th2 = 'threshold2', 255, 255
     manual_width = 640
     
     onProcStart()
@@ -356,14 +385,19 @@ def Mapping_DirectContour():
         cv2.imshow(winname, canny)
 
     cv2.namedWindow(winname)
-    cv2.createTrackbar(varname_th1, winname, default_th1, max_th, update)
-    cv2.createTrackbar(varname_th2, winname, default_th2, max_th, update)
+    cv2.createTrackbar(varname_th1, winname, default_th1, max_th1, update)
+    cv2.createTrackbar(varname_th2, winname, default_th2, max_th2, update)
     update(None)
 
 
 ############################################################
 
 # SUPPORTIVES
+
+def negativeColor(color_img):
+    for i in range(color_img.size):
+        color_img.itemset(i, 255 - color_img.item(i))
+    return color_img
 
 def set_root(window):
     global root

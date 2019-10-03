@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import stl
 from stl import mesh
 
 from src import DepthSegment as ds
@@ -14,50 +15,73 @@ testmodel_t  = '../test_model/Torus.stl'
 testmodel_tu = '../test_model/Torus-Upward.stl'
 
 def main():
-    model = testmodel_tu
 
-    # 1st Phase
+    for modelnum in [2]:
+        model = testmodel_cp[modelnum]
 
-    print('D-Segmentation start.')
-    start = time.time()
+        # 1st Phase
 
-    m = mesh.Mesh.from_file(model)
-    d = ds.DepthSegmentation(m)
+        print('D-Segmentation start.')
+        start = time.time()
 
-    front,section,rear = d
+        m = mesh.Mesh.from_file(model)
+        d = ds.DepthSegmentation(m)
 
-    end = time.time()
-    print('D-Segmentation done.')
-    print('took %f seconds.' % (end-start))
-    print()
+        front,section,rear = d
 
-    total_before = m.__len__()
-    total_after = len(front)+len(section)+len(rear)
-    diff = total_before-total_after
-    print('BEFORE >>> total : %d' % total_before)
-    print('AFTER  >>> total : %d [ front : %d | section : %d | rear : %d ]' % (total_after, len(front), len(section), len(rear)))
-    print('* %d (%.2f%%) decreased.' % ( diff, diff/total_before*100 ))
-    print()
+        from mpl_toolkits import mplot3d
+        from matplotlib import pyplot
+
+        for target,target_name in [(front, 'front'),(rear, 'rear')]:
+            temp = np.zeros(len(target), dtype=mesh.Mesh.dtype)
+
+            for i in range(len(target)):
+                normals, vectors, attr = target[i]
+                temp['vectors'][i] = np.array(vectors)
+
+            tempmesh = mesh.Mesh(temp)
+
+            figure = pyplot.figure()
+            axes = mplot3d.Axes3D(figure)
+
+            axes.add_collection(mplot3d.art3d.Poly3DCollection(tempmesh.vectors))
+            scale = tempmesh.points.flatten(-1)
+            axes.auto_scale_xyz(scale, scale, scale)
+            pyplot.savefig('../output/3ds/토기%d-%s_ds.png'%(modelnum,target_name))
+            pyplot.close()
+
+        end = time.time()
+        print('D-Segmentation done.')
+        print('took %f seconds.' % (end-start))
+        print()
+
+        total_before = m.__len__()
+        total_after = len(front)+len(section)+len(rear)
+        diff = total_before-total_after
+        print('BEFORE >>> total : %d' % total_before)
+        print('AFTER  >>> total : %d [ front : %d | section : %d | rear : %d ]' % (total_after, len(front), len(section), len(rear)))
+        print('* %d (%.2f%%) decreased.' % ( diff, diff/total_before*100 ))
+        print()
 
 
-    # 2nd Phase
+        # 2nd Phase
 
-    print('SVG-Converting start.')
-    start = time.time()
+        print('SVG-Converting start.')
+        start = time.time()
 
-    def create_svg_file(path,data):
-        f = open(path,'w')
-        f.write(data)
-        f.close()
+        def create_svg_file(path,data):
+            f = open(path,'w')
+            f.write(data)
+            f.close()
 
-    create_svg_file('../output/svg/section.svg', svg.build_section(section))
-    create_svg_file('../output/svg/front.svg',   svg.build_surface(front))
-    create_svg_file('../output/svg/rear.svg',    svg.build_surface(rear) )
+        create_svg_file('../output/svg/section.svg', svg.build_section(section))
+        create_svg_file('../output/svg/front.svg',   svg.build_surface(front))
+        create_svg_file('../output/svg/rear.svg',    svg.build_surface(rear) )
 
-    end = time.time()
-    print('SVG-Converting done.')
-    print('took %f seconds.' % (end-start))
-    print()
+        end = time.time()
+        print('SVG-Converting done.')
+        print('took %f seconds.' % (end-start))
+        print()
 
 
 print('\n>>> Start.\n')

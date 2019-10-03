@@ -34,7 +34,6 @@ def Mapping_WindowDetect():
     pass
 
 def main(fname):
-    root = tk.Tk()
     print('3ds')
         
     obj = mesh.Mesh.from_file(fname)
