@@ -171,6 +171,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
     varname_winproc, default_winproc, max_winproc = '(partial) window process level', 4, 4
     varname_bodyproc, default_bodyproc, max_bodyproc = '(partial) body process level', 1, 1
     varname_mdilate, default_mdilate, max_mdilate = '(partial) mask dilation', 32, 255
+    varname_minArea, default_minArea, max_minArea = '(partial) min area', 50, 255
     manual_width = 480
 
     WINDOW_CANNY_THRESH = (78,188)
@@ -180,7 +181,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
     
     onProcStart()
     
-    path = '../test_model/2ds-preproc/토기2' # open_dir()
+    path = '../test_model/2ds-preproc/토기2' # open_dir() # 
 
     # Preproc 2D-Segment.
     dseg = [get_img(path=path+'/outer.png',width=manual_width),
@@ -220,7 +221,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
         dilated = cv2.dilate(mask,kernel)
         return cv2.bitwise_and(raw,raw,mask=dilated) #???
 
-    def proc_window(raw, window_contours, mask_expand, thresh=WINDOW_CANNY_THRESH):
+    def proc_window(raw, window_contours, mask_expand, minArea, thresh=WINDOW_CANNY_THRESH):
         pallete = np.zeros(raw.shape, np.uint8)
         path = '../output/2ds/auto_window_detection/processed_windows/'
         for i in range(len(window_contours)):
@@ -232,29 +233,43 @@ def Mapping_DS_ClosedWindowAutoDetection():
             cv2.imwrite(path+'window_masked_%d.png'%i, masked_overfit)
 
             ####
+            # #PLOTTING
+            # gray_window = cv2.cvtColor(masked_overfit, cv2.COLOR_BGR2GRAY)
+            # hist = [0]*256
+            # for j in range(gray_window.size):
+            #     val = gray_window.item(j)
+            #     hist[val] += 1
 
-            gray_window = cv2.cvtColor(masked_overfit, cv2.COLOR_BGR2GRAY)
-            hist = [0]*256
-            for j in range(gray_window.size):
-                val = gray_window.item(j)
-                hist[val] += 1
-
-            plt.hist2d(range(254), hist[1:255], bins=254)
-            plt.xlabel('pixel value')
-            plt.ylabel('frequency')
-            plt.savefig(path+'window_%d_graphed.png'%i)
-            plt.close()
-
+            # plt.hist2d(range(254), hist[1:255], bins=254)
+            # plt.xlabel('pixel value')
+            # plt.ylabel('frequency')
+            # plt.savefig(path+'window_%d_graphed.png'%i)
+            # plt.close()
             ####
 
             canny = cv2.Canny(masked_overfit, thresh[0],thresh[1], apertureSize=3)
-            masked_fit = apply_mask(canny,mask,mask_expand)
+
+            ### NEW PROC
+
+            win_pallete = np.zeros(raw.shape, np.uint8)
+            conts,hiers = cv2.findContours(canny,cv2.RETR_TREE,cv2.CHAIN_APPROX_NONE)
+            for c in conts:
+                area = cv2.contourArea(c)
+                if area < minArea:
+                    continue
+                cv2.drawContours(win_pallete, [c], -1, WINDOW_COLOR)
+            ###
+
+            masked_fit = apply_mask(win_pallete,mask,mask_expand)
             cv2.imwrite(path+'window_masked_canny_%d.png'%i, masked_fit)
 
-            output = cv2.cvtColor(masked_fit, cv2.COLOR_GRAY2BGR)
+            output = masked_fit
+            # output = cv2.cvtColor(masked_fit, cv2.COLOR_GRAY2BGR)
+            
             output[np.where((output!=[0,0,0]).all(axis=2))] = WINDOW_COLOR
             pallete = cv2.add(pallete,output)
         return pallete # 3-channel
+
     
     def proc_body(raw, body_contours):
         pallete = np.zeros(raw.shape, np.uint8)
@@ -267,6 +282,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
         winproc = cv2.getTrackbarPos(varname_winproc, winname)
         bodyproc = cv2.getTrackbarPos(varname_bodyproc, winname)
         mdilate = cv2.getTrackbarPos(varname_mdilate, winname)
+        minArea = cv2.getTrackbarPos(varname_minArea, winname)
 
         def process(part):
             raw = dseg[part]
@@ -276,7 +292,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
             b_draw, w_draw = [draw_contours(raw,cont,color) for cont, color in [(b_cont,BODY_COLOR), (w_cont,WINDOW_COLOR)]]
             b_mask, w_mask = [draw_masks(raw, c) for c in [b_cont, w_cont]]
             b_maskexp, w_maskexp = [apply_mask(raw,m,mdilate) for m in [b_mask, w_mask]]
-            b_proc, w_proc = [proc_body(raw,b_cont), proc_window(raw,w_cont,mdilate)]
+            b_proc, w_proc = [proc_body(raw,b_cont), proc_window(raw,w_cont,mdilate,minArea)]
             return {
                 'raw'   : raw,
                 'gray'  : gray,
@@ -362,6 +378,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
     cv2.createTrackbar(varname_winproc, winname, default_winproc, max_winproc, update)
     cv2.createTrackbar(varname_bodyproc, winname, default_bodyproc, max_bodyproc, update)
     cv2.createTrackbar(varname_mdilate, winname, default_mdilate, max_mdilate, update)
+    cv2.createTrackbar(varname_minArea, winname, default_minArea, max_minArea, update)
     update(None)
         
 
