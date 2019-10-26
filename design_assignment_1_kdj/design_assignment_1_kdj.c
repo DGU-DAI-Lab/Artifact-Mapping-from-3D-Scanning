@@ -1,21 +1,11 @@
 #include <avr/io.h>
 #include "my_atmega128.h"
 
-void LED_turn_off_all() {
-    PORTC = PORTC & 0x03;
-}
+void LED_turn_off_all();
 
-void KEY_SCAN_reset() {
-    PORTE &= 0x0F;
-}
-
-void KEY_SCAN_set(int n) {
-    PORTE |= 1 << (n + 4);
-}
-
-int KEY_DATA_get(int n) {
-    return PIND & 1 << (n + 4);
-}
+void KEY_SCAN_reset();
+void KEY_SCAN_set(int n);
+int  KEY_DATA_get(int n);
 
 int main(void) {
     int i;
@@ -50,4 +40,24 @@ int main(void) {
         }
         else LED_turn_off_all();
     }
+}
+
+void LED_turn_off_all() {
+    // 모든 LED를 OFF.
+    PORTC = PORTC & 0x03;
+}
+
+void KEY_SCAN_reset() {
+    // 모든 KEY_SCAN 핀의 출력을 0으로.
+    PORTE &= 0x0F;
+}
+
+void KEY_SCAN_set(int n) {
+    // KEY_SCAN 의 n번 핀의 출력을 1로.
+    PORTE |= 1 << (n + 4);
+}
+
+int KEY_DATA_get(int n) {
+    // KEY_DATA 의 n번 핀의 입력을 반환.
+    return PIND & 1 << (n + 4);
 }

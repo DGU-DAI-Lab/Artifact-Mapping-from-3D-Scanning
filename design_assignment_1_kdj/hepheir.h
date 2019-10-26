@@ -1,23 +1,12 @@
 /*
-2018~2019 Coded by hepheir@gmail.com
-EICE. Sophomore 2018212236 Kim Dong Joo
+Last updated : Oct 16 2019
+
+Written by hepheir@gmail.com
+    Kim Dong Joo
+    2018212236
+
+    Dept. of EICE. Sophomore
 */
-void LED_turn_off_all() {
-    PORTC = PORTC & 0x03;
-}
-
-
-void KEYMAT_enable() {
-    DDRD = DDRD & 0b00001111; // KEY_DATA_0~3 --> PD4~7 에 대응 : 입력으로 설정
-    DDRE = DDRE | 0b11110000; // KEY_SCAN_0~3 --> PE4~7 에 대응 : 출력으로 설정
-    
-    PORTE &= 0x0F; // KEY_SCAN 모든 핀을 리셋
-}
-
-void LCD_enable() {
-    DDRA  = 0xFF;
-    PORTA = 0x00;
-}
 
 int waitKey(int time_ms) {
     /* 
@@ -46,4 +35,21 @@ int waitKey(int time_ms) {
         PORTE &= ~(1 << (key_scan + 4));
     }
     return key_S_index;
+}
+
+void LED_turn_off_all() {
+    PORTC = PORTC & 0x03;
+}
+
+
+void KEYMAT_enable() {
+    DDRD = DDRD & 0b00001111; // KEY_DATA_0~3 --> PD4~7 에 대응 : 입력으로 설정
+    DDRE = DDRE | 0b11110000; // KEY_SCAN_0~3 --> PE4~7 에 대응 : 출력으로 설정
+    
+    PORTE &= 0x0F; // KEY_SCAN 모든 핀을 리셋
+}
+
+void LCD_enable() {
+    DDRA  = 0xFF;
+    PORTA = 0x00;
 }
