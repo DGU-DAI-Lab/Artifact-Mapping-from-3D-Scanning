@@ -1,18 +1,40 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# ====================================================
+# 
+# Module : 3D Depth Segmentation
+#
+# Written by hepheir@gmail.com
+# Last updated : Oct 27 2019
+#
+# ====================================================
+#
+#  Process order
+#
+#  1. Breakage mesh : (3D, 3D, 3D)
+#    1-1. Sort facets into front, slice, or rear areas.
+#
+#  2. Cutting mesh : (3D, 2D, 3D)
+#    2-1. Separate each facet in slice area (after breakage)
+#         into 1 line, and 2 small facets
+#
+# ====================================================
+
 from stl import mesh
 import stl
 import numpy as np
 
-def DepthSegmentation(obj):
-    """깊이 기반 분리 : <input> -> breakage -> cutting -> <output>"""
-    assert isinstance(obj,mesh.Mesh)
+# ====================================================
 
+def macro(obj):
+    assert isinstance(obj,mesh.Mesh)
     breakage = _breakage(obj)
     cutting  = _cutting(breakage)
-
     return np.array(cutting)
 
+# ====================================================
+
 def _breakage(obj):
-    """메쉬를 전면, 배면, 단면으로 분류. 각 영역은 중복되지 않음."""
     z = obj.z
     n = obj.normals
     front,section_breakage,rear = [],[],[]

@@ -28,6 +28,20 @@ CANNY_THRESH = (78, 188)
 DILATION_KERNEL_TYPE = cv2.MORPH_ELLIPSE
 DILATION_KERNEL_SIZE = (99,99)
 
+MIN_AREA = 30
+    
+# ============================================
+
+def macro(color_image):
+    gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
+    # Get window masks with their frames
+    body_mask = extract_body_mask(gray_image)
+    window_masks = extract_window_masks(body_mask)
+    dilated_win_masks = dilate_window_masks(window_masks)
+    # Apply mask images
+    win_masks_w_frames = [cv2.bitwise_and(color_image,color_image, mask=m) for m in dilated_win_masks]
+    return win_masks_w_frames
+
 # ============================================
 
 def extract_body_mask(gray_image):
@@ -51,15 +65,3 @@ def dilate_window_masks(window_masks):
     kernel = cv2.getStructuringElement(DILATION_KERNEL_TYPE,DILATION_KERNEL_SIZE)
     dilated_masks = [cv2.dilate(m,kernel) for m in window_masks]
     return dilated_masks
-    
-# ============================================
-
-def macro(color_image):
-    gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-    # Get window masks with their frames
-    body_mask = extract_body_mask(gray_image)
-    window_masks = extract_window_masks(body_mask)
-    dilated_win_masks = dilate_window_masks(window_masks)
-    # Apply mask images
-    win_masks_w_frames = [cv2.bitwise_and(color_image,color_image, mask=m) for m in dilated_win_masks]
-    return win_masks_w_frames

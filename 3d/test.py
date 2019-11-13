@@ -4,8 +4,8 @@ import numpy as np
 import stl
 from stl import mesh
 
-from src import DepthSegment as ds
-from src import Svgfy as svg
+import depthSegmentation as ds
+import Svgfy as svg
 
 import time
 
