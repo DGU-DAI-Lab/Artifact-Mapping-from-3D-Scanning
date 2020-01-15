@@ -181,7 +181,7 @@ def Mapping_DS_ClosedWindowAutoDetection():
     
     onProcStart()
     
-    path = open_dir() # 
+    path = '../test_model/2ds-preproc/토기2' # open_dir() # 
 
     # Preproc 2D-Segment.
     dseg = [get_img(path=path+'/outer.png',width=manual_width),
@@ -422,7 +422,7 @@ def set_root(window):
 
 def open_image():
     file_name = fd.askopenfilename(
-        initialdir = "./",
+        initialdir = "../test_model/2ds-preproc/",
         title = "Select Image",
         filetypes = (
             ("Image files", "*.png *.jpg"),
@@ -432,7 +432,7 @@ def open_image():
 
 def open_dir():
     file_dir = fd.askdirectory(
-        initialdir = "./",
+        initialdir = "../test_model/2ds-preproc/",
         title = "Select Pre-D-Segmented Images")
     return file_dir
 
