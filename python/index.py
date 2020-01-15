@@ -69,9 +69,6 @@ def main():
     menu_3D.add_cascade(label="Mapping", menu=menu_3D_Mapping)
     menubar.add_cascade(label="(미구현) 3D Objects", menu=menu_3D)
 
-
-    ds2_gui.Mapping_DS_ClosedWindowAutoDetection()
-
     root.config(menu=menubar)
     root.mainloop()
 
